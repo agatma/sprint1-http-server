@@ -56,7 +56,7 @@ func NewAPI(metricService MetricService, cfg *Config) *API {
 	})
 	r.Route("/value", func(r chi.Router) {
 		r.Post("/", h.GetMetricValueJSON)
-		r.Get("/value/{metricType}/{metricName}", h.GetMetricValue)
+		r.Get("/{metricType}/{metricName}", h.GetMetricValue)
 	})
 	r.Get("/", h.GetAllMetrics)
 	return &API{
@@ -99,9 +99,8 @@ func (h *handler) SetMetricValue(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) UpdateMetricValue(w http.ResponseWriter, req *http.Request) {
 	var (
-		request  domain.Metrics
-		response domain.Metrics
-		mValue   string
+		request domain.Metrics
+		mValue  string
 	)
 	if err := json.NewDecoder(req.Body).Decode(&request); err != nil {
 		logger.Log.Info("cannot decode request JSON body", zap.Error(err))
@@ -140,31 +139,11 @@ func (h *handler) UpdateMetricValue(w http.ResponseWriter, req *http.Request) {
 		MetricType: request.MType,
 		MetricName: request.ID,
 	})
-	switch request.MType {
-	case domain.Gauge:
-		gaugeValue, err := strconv.ParseFloat(metricResponse.MetricValue, 64)
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-		response = domain.Metrics{
-			ID:    request.ID,
-			MType: request.MType,
-			Value: gaugeValue,
-		}
-	case domain.Counter:
-		counterValue, err := strconv.Atoi(metricResponse.MetricValue)
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-		response = domain.Metrics{
-			ID:    request.ID,
-			MType: request.MType,
-			Delta: int64(counterValue),
-		}
+	response, err := createMetricResponse(&request, metricResponse.MetricValue)
+	if err != nil {
+		http.Error(w, "", http.StatusInternalServerError)
+		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 
 	// сериализуем ответ сервера
@@ -207,10 +186,7 @@ func (h *handler) GetMetricValue(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) GetMetricValueJSON(w http.ResponseWriter, req *http.Request) {
-	var (
-		request  domain.Metrics
-		response domain.Metrics
-	)
+	var request domain.Metrics
 	if err := json.NewDecoder(req.Body).Decode(&request); err != nil {
 		logger.Log.Info("cannot decode request JSON body", zap.Error(err))
 		w.WriteHeader(http.StatusBadRequest)
@@ -238,29 +214,10 @@ func (h *handler) GetMetricValueJSON(w http.ResponseWriter, req *http.Request) {
 		}
 		return
 	}
-	switch request.MType {
-	case domain.Gauge:
-		gaugeValue, err := strconv.ParseFloat(metricResponse.MetricValue, 64)
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-		response = domain.Metrics{
-			ID:    request.ID,
-			MType: request.MType,
-			Value: gaugeValue,
-		}
-	case domain.Counter:
-		counterValue, err := strconv.Atoi(metricResponse.MetricValue)
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-		response = domain.Metrics{
-			ID:    request.ID,
-			MType: request.MType,
-			Delta: int64(counterValue),
-		}
+	response, err := createMetricResponse(&request, metricResponse.MetricValue)
+	if err != nil {
+		http.Error(w, "", http.StatusInternalServerError)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
@@ -306,4 +263,31 @@ func (h *handler) GetAllMetrics(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
+}
+
+func createMetricResponse(request *domain.Metrics, value string) (*domain.Metrics, error) {
+	var response domain.Metrics
+	switch request.MType {
+	case domain.Gauge:
+		gaugeValue, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse value: %s, error: %w", value, err)
+		}
+		response = domain.Metrics{
+			ID:    request.ID,
+			MType: request.MType,
+			Value: gaugeValue,
+		}
+	case domain.Counter:
+		counterValue, err := strconv.Atoi(value)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse value: %s, error: %w", value, err)
+		}
+		response = domain.Metrics{
+			ID:    request.ID,
+			MType: request.MType,
+			Delta: int64(counterValue),
+		}
+	}
+	return &response, nil
 }

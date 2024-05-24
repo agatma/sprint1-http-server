@@ -3,23 +3,20 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
 
+	"github.com/agatma/sprint1-http-server/internal/agent/core/domain"
 	"github.com/agatma/sprint1-http-server/internal/agent/logger"
 )
 
-func SendMetrics(host string, metricType string, metricName string, metricValue string) error {
+func SendMetrics(host string, request *domain.UpdateMetricRequest) error {
 	client := resty.New()
 	resp, err := client.R().
-		SetRawPathParams(map[string]string{
-			"metricType":  metricType,
-			"metricName":  strings.ToLower(metricName),
-			"metricValue": metricValue,
-		}).
-		Post(host + "/update/{metricType}/{metricName}/{metricValue}")
+		SetHeader("Content-Type", "application/json").
+		SetBody(*request).
+		Post(host + "/update/")
 
 	if err != nil {
 		return fmt.Errorf("failed to send metrics: %w", err)

@@ -51,7 +51,7 @@ func NewAPI(metricService MetricService, cfg *Config) *API {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLogging)
 	r.Route("/update", func(r chi.Router) {
-		r.Post("/", h.UpdateMetricValue)
+		r.Post("/", h.SetMetricValueJSON)
 		r.Post("/{metricType}/{metricName}/{metricValue}", h.SetMetricValue)
 	})
 	r.Route("/value", func(r chi.Router) {
@@ -97,7 +97,7 @@ func (h *handler) SetMetricValue(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *handler) UpdateMetricValue(w http.ResponseWriter, req *http.Request) {
+func (h *handler) SetMetricValueJSON(w http.ResponseWriter, req *http.Request) {
 	var (
 		request domain.Metrics
 		mValue  string
@@ -109,7 +109,7 @@ func (h *handler) UpdateMetricValue(w http.ResponseWriter, req *http.Request) {
 	}
 	switch request.MType {
 	case domain.Gauge:
-		mValue = strconv.FormatFloat(request.Value, 'f', 6, 64)
+		mValue = strconv.FormatFloat(request.Value, 'f', -1, 64)
 	case domain.Counter:
 		mValue = strconv.Itoa(int(request.Delta))
 	}

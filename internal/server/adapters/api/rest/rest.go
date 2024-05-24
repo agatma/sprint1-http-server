@@ -1,9 +1,11 @@
 package rest
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -49,6 +51,7 @@ func NewAPI(metricService MetricService, cfg *Config) *API {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLogging)
 	r.Route("/update", func(r chi.Router) {
+		r.Post("/", h.UpdateMetricValue)
 		r.Post("/{metricType}/{metricName}/{metricValue}", h.SetMetricValue)
 	})
 	r.Get("/value/{metricType}/{metricName}", h.GetMetricValue)
@@ -87,6 +90,85 @@ func (h *handler) SetMetricValue(w http.ResponseWriter, req *http.Request) {
 		default:
 			http.Error(w, "", http.StatusInternalServerError)
 		}
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *handler) UpdateMetricValue(w http.ResponseWriter, req *http.Request) {
+	var (
+		request  domain.Metrics
+		response domain.Metrics
+		mValue   string
+	)
+	if err := json.NewDecoder(req.Body).Decode(&request); err != nil {
+		logger.Log.Info("cannot decode request JSON body", zap.Error(err))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	switch request.MType {
+	case domain.Gauge:
+		mValue = strconv.FormatFloat(request.Value, 'f', 6, 64)
+	case domain.Counter:
+		mValue = strconv.Itoa(int(request.Delta))
+	}
+	serviceResponse := h.metricService.SetMetricValue(&domain.SetMetricRequest{
+		MetricType:  request.MType,
+		MetricName:  request.ID,
+		MetricValue: mValue,
+	})
+
+	if serviceResponse.Error != nil {
+		logger.Log.Error("failed to set metric",
+			zap.String(metricValue, mValue),
+			zap.String(metricType, request.MType),
+			zap.String(metricName, request.ID),
+			zap.Error(serviceResponse.Error),
+		)
+		switch {
+		case errors.Is(serviceResponse.Error, domain.ErrIncorrectMetricType):
+			http.Error(w, serviceResponse.Error.Error(), http.StatusBadRequest)
+		case errors.Is(serviceResponse.Error, domain.ErrIncorrectMetricValue):
+			http.Error(w, serviceResponse.Error.Error(), http.StatusBadRequest)
+		default:
+			http.Error(w, "", http.StatusInternalServerError)
+		}
+	}
+	metricResponse := h.metricService.GetMetricValue(&domain.MetricRequest{
+		MetricType: request.MType,
+		MetricName: request.ID,
+	})
+	switch request.MType {
+	case domain.Gauge:
+		gaugeValue, err := strconv.ParseFloat(metricResponse.MetricValue, 64)
+		if err != nil {
+			http.Error(w, "", http.StatusInternalServerError)
+			return
+		}
+		response = domain.Metrics{
+			ID:    request.ID,
+			MType: request.MType,
+			Value: gaugeValue,
+		}
+	case domain.Counter:
+		counterValue, err := strconv.Atoi(metricResponse.MetricValue)
+		if err != nil {
+			http.Error(w, "", http.StatusInternalServerError)
+			return
+		}
+		response = domain.Metrics{
+			ID:    request.ID,
+			MType: request.MType,
+			Delta: int64(counterValue),
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	// сериализуем ответ сервера
+	enc := json.NewEncoder(w)
+	if err := enc.Encode(response); err != nil {
+		logger.Log.Debug("error encoding response", zap.Error(err))
+		return
 	}
 	w.WriteHeader(http.StatusOK)
 }

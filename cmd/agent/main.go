@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/agatma/sprint1-http-server/internal/agent/adapters/storage"
 	"github.com/agatma/sprint1-http-server/internal/agent/adapters/storage/memory"
@@ -12,7 +13,11 @@ import (
 )
 
 func main() {
+	f, _ := os.Create("agent_log.txt")
+	defer f.Close()
+	log.SetOutput(f)
 	if err := run(); err != nil {
+		log.Println(err)
 		log.Fatal(err)
 	}
 }

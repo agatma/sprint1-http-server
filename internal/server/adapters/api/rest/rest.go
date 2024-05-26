@@ -115,7 +115,12 @@ func (h *handler) SetMetricValueJSON(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	defer req.Body.Close()
+	err = req.Body.Close()
+	if err != nil {
+		logger.Log.Info("cannot close body", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 	switch request.MType {
 	case domain.Gauge:
 		mValue = strconv.FormatFloat(request.Value, 'f', -1, 64)
@@ -161,7 +166,6 @@ func (h *handler) SetMetricValueJSON(w http.ResponseWriter, req *http.Request) {
 		logger.Log.Error("error encoding response", zap.Error(err))
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h *handler) GetMetricValue(w http.ResponseWriter, req *http.Request) {
@@ -188,7 +192,6 @@ func (h *handler) GetMetricValue(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if _, err := w.Write([]byte(response.MetricValue)); err != nil {
-		w.WriteHeader(http.StatusOK)
 		return
 	}
 }
@@ -234,7 +237,6 @@ func (h *handler) GetMetricValueJSON(w http.ResponseWriter, req *http.Request) {
 		logger.Log.Error("error encoding response", zap.Error(err))
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h *handler) GetAllMetrics(w http.ResponseWriter, req *http.Request) {

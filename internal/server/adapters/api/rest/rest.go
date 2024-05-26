@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -91,8 +92,9 @@ func (h *handler) SetMetricValue(w http.ResponseWriter, req *http.Request) {
 		case errors.Is(response.Error, domain.ErrIncorrectMetricValue):
 			http.Error(w, response.Error.Error(), http.StatusBadRequest)
 		default:
-			http.Error(w, "", http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
+		return
 	}
 	w.WriteHeader(http.StatusOK)
 }
@@ -107,6 +109,13 @@ func (h *handler) SetMetricValueJSON(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	_, err := io.Copy(io.Discard, req.Body)
+	if err != nil {
+		logger.Log.Info("cannot read body", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	defer req.Body.Close()
 	switch request.MType {
 	case domain.Gauge:
 		mValue = strconv.FormatFloat(request.Value, 'f', -1, 64)
@@ -132,8 +141,9 @@ func (h *handler) SetMetricValueJSON(w http.ResponseWriter, req *http.Request) {
 		case errors.Is(serviceResponse.Error, domain.ErrIncorrectMetricValue):
 			http.Error(w, serviceResponse.Error.Error(), http.StatusBadRequest)
 		default:
-			http.Error(w, "", http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
+		return
 	}
 	metricResponse := h.metricService.GetMetricValue(&domain.MetricRequest{
 		MetricType: request.MType,
@@ -141,15 +151,13 @@ func (h *handler) SetMetricValueJSON(w http.ResponseWriter, req *http.Request) {
 	})
 	response, err := createMetricResponse(&request, metricResponse.MetricValue)
 	if err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 
-	// сериализуем ответ сервера
-	enc := json.NewEncoder(w)
-	if err := enc.Encode(response); err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
+	if err = json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		logger.Log.Error("error encoding response", zap.Error(err))
 		return
 	}
@@ -175,7 +183,7 @@ func (h *handler) GetMetricValue(w http.ResponseWriter, req *http.Request) {
 		if errors.Is(response.Error, domain.ErrIncorrectMetricType) {
 			http.Error(w, domain.ErrItemNotFound.Error(), http.StatusNotFound)
 		} else {
-			http.Error(w, "", http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -210,13 +218,13 @@ func (h *handler) GetMetricValueJSON(w http.ResponseWriter, req *http.Request) {
 		if errors.Is(metricResponse.Error, domain.ErrIncorrectMetricType) {
 			http.Error(w, domain.ErrItemNotFound.Error(), http.StatusNotFound)
 		} else {
-			http.Error(w, "", http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 		return
 	}
 	response, err := createMetricResponse(&request, metricResponse.MetricValue)
 	if err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

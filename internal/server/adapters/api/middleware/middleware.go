@@ -22,10 +22,10 @@ type loggingResponseWriter struct {
 
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	size, err := r.ResponseWriter.Write(b)
-	r.responseData.size += size
 	if err != nil {
 		return size, fmt.Errorf("failed to write response %w", err)
 	}
+	r.responseData.size += size
 	return size, nil
 }
 
@@ -52,7 +52,7 @@ func RequestLogging(h http.Handler) http.Handler {
 			zap.String("uri", r.RequestURI),
 			zap.Int("status", respData.status),
 			zap.Int("size", respData.size),
-			zap.Duration("duration", duration),
+			zap.String("duration", duration.String()),
 		)
 	}
 	return http.HandlerFunc(logFn)

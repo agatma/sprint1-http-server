@@ -19,7 +19,8 @@ cmd/server/server
 
 # Dependency directories (remove the comment below to include it)
 vendor/
-
+Makefile
+tests/
 # IDEs directories
 .idea
 .vscode

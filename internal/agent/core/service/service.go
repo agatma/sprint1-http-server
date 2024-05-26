@@ -125,7 +125,7 @@ func (a *AgentMetricService) SendMetrics(host string) error {
 		request := domain.UpdateMetricRequest{
 			ID:    metricName,
 			MType: domain.Gauge,
-			Value: gaugeValue,
+			Value: &gaugeValue,
 		}
 		err = handlers.SendMetrics(host, &request)
 		if err != nil {
@@ -140,13 +140,14 @@ func (a *AgentMetricService) SendMetrics(host string) error {
 	}
 	for metricName, metricValue := range response.Values {
 		counterValue, err := strconv.Atoi(metricValue)
+		counterInt64Value := int64(counterValue)
 		if err != nil {
 			return fmt.Errorf("error occured during parsing metrics: %w", err)
 		}
 		request := domain.UpdateMetricRequest{
 			ID:    metricName,
-			MType: domain.Gauge,
-			Delta: int64(counterValue),
+			MType: domain.Counter,
+			Delta: &counterInt64Value,
 		}
 		err = handlers.SendMetrics(host, &request)
 		if err != nil {

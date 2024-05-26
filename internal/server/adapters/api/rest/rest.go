@@ -123,9 +123,9 @@ func (h *handler) SetMetricValueJSON(w http.ResponseWriter, req *http.Request) {
 	}
 	switch request.MType {
 	case domain.Gauge:
-		mValue = strconv.FormatFloat(request.Value, 'f', -1, 64)
+		mValue = strconv.FormatFloat(*request.Value, 'f', -1, 64)
 	case domain.Counter:
-		mValue = strconv.Itoa(int(request.Delta))
+		mValue = strconv.Itoa(int(*request.Delta))
 	}
 	serviceResponse := h.metricService.SetMetricValue(&domain.SetMetricRequest{
 		MetricType:  request.MType,
@@ -154,11 +154,14 @@ func (h *handler) SetMetricValueJSON(w http.ResponseWriter, req *http.Request) {
 		MetricType: request.MType,
 		MetricName: request.ID,
 	})
+	fmt.Println("запрос", request.MType, request.ID, metricResponse.MetricValue)
 	response, err := createMetricResponse(&request, metricResponse.MetricValue)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	fmt.Println("ответ", response.MType, response.ID, response.Value, response.Delta)
+
 	w.Header().Set("Content-Type", "application/json")
 
 	if err = json.NewEncoder(w).Encode(response); err != nil {
@@ -262,10 +265,10 @@ func (h *handler) GetAllMetrics(w http.ResponseWriter, req *http.Request) {
 	}
 	html := "<html><body><ul>"
 	for key, value := range gauge.Values {
-		html += fmt.Sprintf("<li>%s: %v</li>", key, value)
+		html += fmt.Sprintf("<li>gauge: %s: %v</li>", key, value)
 	}
 	for key, value := range counter.Values {
-		html += fmt.Sprintf("<li>%s: %v</li>", key, value)
+		html += fmt.Sprintf("<li>counter: %s: %v</li>", key, value)
 	}
 	html += "</ul></body></html>"
 	w.Header().Set("Content-Type", "text/html")
@@ -286,17 +289,18 @@ func createMetricResponse(request *domain.Metrics, value string) (*domain.Metric
 		response = domain.Metrics{
 			ID:    request.ID,
 			MType: request.MType,
-			Value: gaugeValue,
+			Value: &gaugeValue,
 		}
 	case domain.Counter:
 		counterValue, err := strconv.Atoi(value)
+		counterInt64Value := int64(counterValue)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse value: %s, error: %w", value, err)
 		}
 		response = domain.Metrics{
 			ID:    request.ID,
 			MType: request.MType,
-			Delta: int64(counterValue),
+			Delta: &counterInt64Value,
 		}
 	}
 	return &response, nil

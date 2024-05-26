@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/agatma/sprint1-http-server/internal/server/logger"
+	"go.uber.org/zap"
 )
 
 type AgentMetricService interface {
@@ -44,7 +47,7 @@ func (a *AgentWorker) Run() error {
 		case <-sendMetricsTicker.C:
 			err := a.agentMetricService.SendMetrics(host)
 			if err != nil {
-				return fmt.Errorf("failed to send metrics %w", err)
+				logger.Log.Error("failed to send metrics", zap.Error(err))
 			}
 			pollCount = 0
 		}

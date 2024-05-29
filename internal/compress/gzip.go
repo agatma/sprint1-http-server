@@ -33,7 +33,11 @@ func (c *Writer) WriteHeader(statusCode int) {
 }
 
 func (c *Writer) Close() error {
-	return c.zw.Close()
+	err := c.zw.Close()
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	return nil
 }
 
 type Reader struct {
@@ -44,7 +48,7 @@ type Reader struct {
 func NewCompressReader(r io.ReadCloser) (*Reader, error) {
 	zr, err := gzip.NewReader(r)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w", err)
 	}
 
 	return &Reader{

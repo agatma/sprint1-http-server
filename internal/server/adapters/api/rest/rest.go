@@ -50,7 +50,9 @@ func NewAPI(metricService MetricService, cfg *Config) *API {
 		metricService: metricService,
 	}
 	r := chi.NewRouter()
-	r.Use(middleware.RequestLogging)
+	r.Use(middleware.LoggingRequestMiddleware)
+	r.Use(middleware.CompressRequestMiddleware)
+	r.Use(middleware.CompressResponseMiddleware)
 	r.Route("/update", func(r chi.Router) {
 		r.Post("/", h.SetMetricValueJSON)
 		r.Post("/{metricType}/{metricName}/{metricValue}", h.SetMetricValue)
@@ -154,14 +156,11 @@ func (h *handler) SetMetricValueJSON(w http.ResponseWriter, req *http.Request) {
 		MetricType: request.MType,
 		MetricName: request.ID,
 	})
-	fmt.Println("запрос", request.MType, request.ID, metricResponse.MetricValue)
 	response, err := createMetricResponse(&request, metricResponse.MetricValue)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	fmt.Println("ответ", response.MType, response.ID, response.Value, response.Delta)
-
 	w.Header().Set("Content-Type", "application/json")
 
 	if err = json.NewEncoder(w).Encode(response); err != nil {

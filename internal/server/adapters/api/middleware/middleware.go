@@ -3,10 +3,12 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
 
+	"github.com/agatma/sprint1-http-server/internal/compress"
 	"github.com/agatma/sprint1-http-server/internal/server/logger"
 )
 
@@ -34,7 +36,7 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.responseData.status = statusCode
 }
 
-func RequestLogging(h http.Handler) http.Handler {
+func LoggingRequestMiddleware(h http.Handler) http.Handler {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		respData := &responseData{
@@ -56,4 +58,34 @@ func RequestLogging(h http.Handler) http.Handler {
 		)
 	}
 	return http.HandlerFunc(logFn)
+}
+
+func CompressRequestMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		cr, err := compress.NewCompressReader(r.Body)
+		defer cr.Close()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		r.Body = cr
+		next.ServeHTTP(w, r)
+	})
+}
+
+func CompressResponseMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), `gzip`) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		cw := compress.NewCompressWriter(w)
+		w.Header().Set("Content-Encoding", `gzip`)
+		defer cw.Close()
+		next.ServeHTTP(cw, r)
+	})
 }

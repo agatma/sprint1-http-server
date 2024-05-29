@@ -122,7 +122,7 @@ func (a *AgentMetricService) SendMetrics(host string) error {
 		if err != nil {
 			return fmt.Errorf("error occured during parsing metrics: %w", err)
 		}
-		request := domain.UpdateMetricRequest{
+		request := domain.MetricRequestJSON{
 			ID:    metricName,
 			MType: domain.Gauge,
 			Value: &gaugeValue,
@@ -144,7 +144,7 @@ func (a *AgentMetricService) SendMetrics(host string) error {
 		if err != nil {
 			return fmt.Errorf("error occured during parsing metrics: %w", err)
 		}
-		request := domain.UpdateMetricRequest{
+		request := domain.MetricRequestJSON{
 			ID:    metricName,
 			MType: domain.Counter,
 			Delta: &counterInt64Value,

@@ -67,11 +67,16 @@ func CompressRequestMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		cr, err := compress.NewCompressReader(r.Body)
-		defer cr.Close()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		defer func() {
+			if err := cr.Close(); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}()
 		r.Body = cr
 		next.ServeHTTP(w, r)
 	})
@@ -84,8 +89,14 @@ func CompressResponseMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		cw := compress.NewCompressWriter(w)
+		defer func() {
+			if err := cw.Close(); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}()
 		w.Header().Set("Content-Encoding", `gzip`)
-		defer cw.Close()
+
 		next.ServeHTTP(cw, r)
 	})
 }

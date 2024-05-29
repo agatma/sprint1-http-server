@@ -3,6 +3,7 @@ package compress
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -58,7 +59,7 @@ func (c Reader) Read(p []byte) (n int, err error) {
 
 func (c *Reader) Close() error {
 	if err := c.r.Close(); err != nil {
-		return err
+		return fmt.Errorf("%w", err)
 	}
 	return c.zr.Close()
 }
@@ -68,11 +69,11 @@ func GzipData(data []byte) ([]byte, error) {
 	gz := gzip.NewWriter(&b)
 	_, err := gz.Write(data)
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, fmt.Errorf("%w", err)
 	}
 	err = gz.Close()
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, fmt.Errorf("%w", err)
 	}
 	return b.Bytes(), nil
 }

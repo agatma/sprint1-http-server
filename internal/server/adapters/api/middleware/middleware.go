@@ -1,7 +1,9 @@
 package middleware
 
 import (
+	"compress/gzip"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -66,18 +68,20 @@ func CompressRequestMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		cr, err := compress.NewCompressReader(r.Body)
+		gzBody := r.Body
+		defer func(gzipBody io.ReadCloser) {
+			err := gzipBody.Close()
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}(gzBody)
+		zr, err := gzip.NewReader(gzBody)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		defer func() {
-			if err := cr.Close(); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-		}()
-		r.Body = cr
+		r.Body = zr
 		next.ServeHTTP(w, r)
 	})
 }

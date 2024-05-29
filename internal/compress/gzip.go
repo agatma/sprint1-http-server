@@ -25,7 +25,11 @@ func (c *Writer) Header() http.Header {
 }
 
 func (c *Writer) Write(p []byte) (int, error) {
-	return c.zw.Write(p)
+	n, err := c.zw.Write(p)
+	if err != nil {
+		return 0, fmt.Errorf("%w", err)
+	}
+	return n, nil
 }
 
 func (c *Writer) WriteHeader(statusCode int) {
@@ -43,29 +47,6 @@ func (c *Writer) Close() error {
 type Reader struct {
 	r  io.ReadCloser
 	zr *gzip.Reader
-}
-
-func NewCompressReader(r io.ReadCloser) (*Reader, error) {
-	zr, err := gzip.NewReader(r)
-	if err != nil {
-		return nil, fmt.Errorf("%w", err)
-	}
-
-	return &Reader{
-		r:  r,
-		zr: zr,
-	}, nil
-}
-
-func (c Reader) Read(p []byte) (n int, err error) {
-	return c.zr.Read(p)
-}
-
-func (c *Reader) Close() error {
-	if err := c.r.Close(); err != nil {
-		return fmt.Errorf("%w", err)
-	}
-	return c.zr.Close()
 }
 
 func GzipData(data []byte) ([]byte, error) {

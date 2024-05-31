@@ -20,32 +20,15 @@ type Config struct {
 }
 
 func NewConfig() (*Config, error) {
-	var (
-		cfg            Config
-		flagRunAddr    *string
-		flagLogLevel   *string
-		pollInterval   *int
-		reportInterval *int
-	)
-	flagRunAddr = flag.String("a", "localhost:8080", "run address")
-	pollInterval = flag.Int("p", defaultPollInterval, " poll interval ")
-	reportInterval = flag.Int("r", defaultReportInterval, " report interval ")
-	flagLogLevel = flag.String("l", "info", "log level")
+	var cfg Config
+	flag.StringVar(&cfg.Address, "a", "localhost:8080", "run address")
+	flag.IntVar(&cfg.PollInterval, "p", defaultPollInterval, " poll interval ")
+	flag.IntVar(&cfg.ReportInterval, "r", defaultReportInterval, " report interval ")
+	flag.StringVar(&cfg.LogLevel, "l", "info", "log level")
 	flag.Parse()
 	err := env.Parse(&cfg)
 	if err != nil {
 		return &cfg, fmt.Errorf("failed to get config for worker: %w", err)
 	}
-	if cfg.Address == "" {
-		cfg.Address = *flagRunAddr
-	}
-	if cfg.ReportInterval == 0 {
-		cfg.ReportInterval = *reportInterval
-	}
-
-	if cfg.PollInterval == 0 {
-		cfg.PollInterval = *pollInterval
-	}
-	cfg.LogLevel = *flagLogLevel
 	return &cfg, nil
 }

@@ -13,22 +13,14 @@ type Config struct {
 }
 
 func NewConfig() (*Config, error) {
-	var (
-		flagRunAddr  *string
-		flagLogLevel *string
-		cfg          Config
-	)
-	flagRunAddr = flag.String("a", ":8080", "address and port to run server")
-	flagLogLevel = flag.String("l", "info", "log level")
+	var cfg Config
+	flag.StringVar(&cfg.Address, "a", ":8080", "address and port to run server")
+	flag.StringVar(&cfg.LogLevel, "l", "info", "log level")
+	flag.Parse()
 
 	err := env.Parse(&cfg)
 	if err != nil {
 		return &cfg, fmt.Errorf("failed to get config for server: %w", err)
 	}
-	flag.Parse()
-	if cfg.Address == "" {
-		cfg.Address = *flagRunAddr
-	}
-	cfg.LogLevel = *flagLogLevel
 	return &cfg, nil
 }

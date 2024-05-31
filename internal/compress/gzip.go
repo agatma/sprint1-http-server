@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
-	"io"
 	"net/http"
 )
 
@@ -42,11 +41,6 @@ func (c *Writer) Close() error {
 		return fmt.Errorf("%w", err)
 	}
 	return nil
-}
-
-type Reader struct {
-	r  io.ReadCloser
-	zr *gzip.Reader
 }
 
 func GzipData(data []byte) ([]byte, error) {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/agatma/sprint1-http-server/internal/server/adapters/api/rest"
 	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage"
+	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage/file"
 	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage/memory"
 	"github.com/agatma/sprint1-http-server/internal/server/config"
 	"github.com/agatma/sprint1-http-server/internal/server/core/service"
@@ -21,15 +22,24 @@ func main() {
 
 func run() error {
 	cfg, err := config.NewConfig()
+	var metricStorage storage.MetricStorage
 	if err != nil {
 		return fmt.Errorf("can't load config: %w", err)
 	}
 	if err = logger.Initialize(cfg.LogLevel); err != nil {
 		return fmt.Errorf("can't load logger: %w", err)
 	}
-	metricStorage, err := storage.NewStorage(storage.Config{
-		Memory: &memory.Config{},
-	})
+	if cfg.StoreInterval == 0 {
+		metricStorage, err = storage.NewStorage(storage.Config{
+			File: &file.Config{
+				Filepath: cfg.FileStoragePath,
+			},
+		})
+	} else {
+		metricStorage, err = storage.NewStorage(storage.Config{
+			Memory: &memory.Config{},
+		})
+	}
 	if err != nil {
 		return fmt.Errorf("failed to initialize a storage: %w", err)
 	}

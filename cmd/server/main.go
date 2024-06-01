@@ -36,10 +36,15 @@ func run() error {
 	}
 	metricService, err := service.NewMetricService(cfg, metricStorage)
 	api := rest.NewAPI(metricService, cfg)
-	if err := api.Run(); err != nil {
+	if err = api.Run(); err != nil {
 		if errors.Is(err, http.ErrServerClosed) {
-			//metricService.SaveMetricsToFile()
+			err = metricService.SaveMetricsToFile()
+			if err != nil {
+				return fmt.Errorf("failed to save metrics during shutdown: %w", err)
+			}
+			logger.Log.Info("metrics are saved to file")
 		}
+
 		return fmt.Errorf("server has failed: %w", err)
 	}
 	return nil

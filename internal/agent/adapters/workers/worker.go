@@ -5,8 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/agatma/sprint1-http-server/internal/server/logger"
 	"go.uber.org/zap"
+
+	"github.com/agatma/sprint1-http-server/internal/agent/config"
+
+	"github.com/agatma/sprint1-http-server/internal/server/logger"
 )
 
 type AgentMetricService interface {
@@ -16,10 +19,10 @@ type AgentMetricService interface {
 
 type AgentWorker struct {
 	agentMetricService AgentMetricService
-	config             *Config
+	config             *config.Config
 }
 
-func NewAgentWorker(agentMetricService AgentMetricService, cfg *Config) *AgentWorker {
+func NewAgentWorker(agentMetricService AgentMetricService, cfg *config.Config) *AgentWorker {
 	return &AgentWorker{
 		agentMetricService: agentMetricService,
 		config:             cfg,

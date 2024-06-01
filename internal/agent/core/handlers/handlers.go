@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/agatma/sprint1-http-server/internal/compress"
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
+
+	"github.com/agatma/sprint1-http-server/internal/shared-kernel/compress"
 
 	"github.com/agatma/sprint1-http-server/internal/agent/core/domain"
 	"github.com/agatma/sprint1-http-server/internal/agent/logger"

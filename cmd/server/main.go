@@ -7,6 +7,7 @@ import (
 	"github.com/agatma/sprint1-http-server/internal/server/adapters/api/rest"
 	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage"
 	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage/memory"
+	"github.com/agatma/sprint1-http-server/internal/server/config"
 	"github.com/agatma/sprint1-http-server/internal/server/core/service"
 	"github.com/agatma/sprint1-http-server/internal/server/logger"
 )
@@ -19,7 +20,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := rest.NewConfig()
+	cfg, err := config.NewConfig()
 	if err != nil {
 		return fmt.Errorf("can't load config: %w", err)
 	}

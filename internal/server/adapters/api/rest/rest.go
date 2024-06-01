@@ -1,18 +1,23 @@
 package rest
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 
 	"github.com/agatma/sprint1-http-server/internal/server/adapters/api/middleware"
+	"github.com/agatma/sprint1-http-server/internal/server/config"
 	"github.com/agatma/sprint1-http-server/internal/server/core/domain"
 	"github.com/agatma/sprint1-http-server/internal/server/logger"
 )
@@ -38,14 +43,23 @@ type API struct {
 }
 
 func (a *API) Run() error {
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+
+	go func() {
+		<-sigint
+		if err := a.srv.Shutdown(context.Background()); err != nil {
+			logger.Log.Info("server shutdown: ", zap.Error(err))
+		}
+	}()
 	if err := a.srv.ListenAndServe(); err != nil {
-		logger.Log.Error("error occured during running server: ", zap.Error(err))
+		logger.Log.Error("error occurred during running server: ", zap.Error(err))
 		return fmt.Errorf("failed run server: %w", err)
 	}
 	return nil
 }
 
-func NewAPI(metricService MetricService, cfg *Config) *API {
+func NewAPI(metricService MetricService, cfg *config.Config) *API {
 	h := &handler{
 		metricService: metricService,
 	}

@@ -8,9 +8,9 @@ import (
 )
 
 type MetricStorage interface {
-	GetMetric(mType, mName string) (*domain.Metrics, error)
-	SetMetric(m *domain.Metrics) (*domain.Metrics, error)
-	GetAllMetrics() domain.MetricsList
+	GetMetric(mType, mName string) (*domain.Metric, error)
+	SetMetric(m *domain.Metric) (*domain.Metric, error)
+	GetAllMetrics() (domain.MetricsList, error)
 }
 
 type MetricService struct {
@@ -23,7 +23,7 @@ func NewMetricService(storage MetricStorage) *MetricService {
 	}
 }
 
-func (ms *MetricService) GetMetric(mType, mName string) (*domain.Metrics, error) {
+func (ms *MetricService) GetMetric(mType, mName string) (*domain.Metric, error) {
 	metric, err := ms.storage.GetMetric(mType, mName)
 	if err != nil {
 		return metric, fmt.Errorf("failed to get metric: %w", err)
@@ -31,7 +31,7 @@ func (ms *MetricService) GetMetric(mType, mName string) (*domain.Metrics, error)
 	return metric, nil
 }
 
-func (ms *MetricService) SetMetric(m *domain.Metrics) (*domain.Metrics, error) {
+func (ms *MetricService) SetMetric(m *domain.Metric) (*domain.Metric, error) {
 	switch m.MType {
 	case domain.Gauge, domain.Counter:
 		metric, err := ms.storage.SetMetric(m)
@@ -40,18 +40,18 @@ func (ms *MetricService) SetMetric(m *domain.Metrics) (*domain.Metrics, error) {
 		}
 		return metric, nil
 	default:
-		return &domain.Metrics{}, domain.ErrIncorrectMetricType
+		return &domain.Metric{}, domain.ErrIncorrectMetricType
 	}
 }
 
-func (ms *MetricService) SetMetricValue(req *domain.SetMetricRequest) (*domain.Metrics, error) {
+func (ms *MetricService) SetMetricValue(req *domain.SetMetricRequest) (*domain.Metric, error) {
 	switch req.MType {
 	case domain.Gauge:
 		value, err := strconv.ParseFloat(req.Value, 64)
 		if err != nil {
-			return &domain.Metrics{}, domain.ErrIncorrectMetricValue
+			return &domain.Metric{}, domain.ErrIncorrectMetricValue
 		}
-		metric, err := ms.storage.SetMetric(&domain.Metrics{
+		metric, err := ms.storage.SetMetric(&domain.Metric{
 			ID:    req.ID,
 			MType: req.MType,
 			Value: &value,
@@ -63,10 +63,10 @@ func (ms *MetricService) SetMetricValue(req *domain.SetMetricRequest) (*domain.M
 	case domain.Counter:
 		value, err := strconv.Atoi(req.Value)
 		if err != nil {
-			return &domain.Metrics{}, domain.ErrIncorrectMetricValue
+			return &domain.Metric{}, domain.ErrIncorrectMetricValue
 		}
 		valueInt := int64(value)
-		metric, err := ms.storage.SetMetric(&domain.Metrics{
+		metric, err := ms.storage.SetMetric(&domain.Metric{
 			ID:    req.ID,
 			MType: req.MType,
 			Delta: &valueInt,
@@ -76,7 +76,7 @@ func (ms *MetricService) SetMetricValue(req *domain.SetMetricRequest) (*domain.M
 		}
 		return metric, nil
 	default:
-		return &domain.Metrics{}, domain.ErrIncorrectMetricType
+		return &domain.Metric{}, domain.ErrIncorrectMetricType
 	}
 }
 
@@ -97,6 +97,10 @@ func (ms *MetricService) GetMetricValue(mType, mName string) (string, error) {
 	}
 }
 
-func (ms *MetricService) GetAllMetrics() domain.MetricsList {
-	return ms.storage.GetAllMetrics()
+func (ms *MetricService) GetAllMetrics() (domain.MetricsList, error) {
+	metrics, err := ms.storage.GetAllMetrics()
+	if err != nil {
+		return nil, fmt.Errorf("%w", err)
+	}
+	return metrics, nil
 }

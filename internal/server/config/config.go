@@ -24,7 +24,7 @@ func NewConfig() (*Config, error) {
 	flag.StringVar(&cfg.Address, "a", ":8080", "port to run server")
 	flag.IntVar(&cfg.StoreInterval, "i", storeInterval, "time interval (seconds) to backup server data")
 	flag.StringVar(&cfg.FileStoragePath, "f", "/tmp/metrics-db.json", "where to store server data")
-	flag.BoolVar(&cfg.Restore, "r", true, "recover data from file")
+	flag.BoolVar(&cfg.Restore, "r", true, "recover data from files")
 	flag.StringVar(&cfg.LogLevel, "l", "info", "log level")
 	flag.Parse()
 

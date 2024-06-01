@@ -28,11 +28,11 @@ const (
 )
 
 type MetricService interface {
-	GetMetric(mType, mName string) (*domain.Metrics, error)
+	GetMetric(mType, mName string) (*domain.Metric, error)
 	GetMetricValue(mType, mName string) (string, error)
-	SetMetric(m *domain.Metrics) (*domain.Metrics, error)
-	SetMetricValue(m *domain.SetMetricRequest) (*domain.Metrics, error)
-	GetAllMetrics() domain.MetricsList
+	SetMetric(m *domain.Metric) (*domain.Metric, error)
+	SetMetricValue(m *domain.SetMetricRequest) (*domain.Metric, error)
+	GetAllMetrics() (domain.MetricsList, error)
 }
 
 type handler struct {
@@ -129,7 +129,7 @@ func (h *handler) SetMetricValue(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) SetMetric(w http.ResponseWriter, req *http.Request) {
-	var m domain.Metrics
+	var m domain.Metric
 	if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
 		logger.Log.Info("cannot decode request JSON body", zap.Error(err))
 		w.WriteHeader(http.StatusBadRequest)
@@ -182,7 +182,7 @@ func (h *handler) GetMetricValue(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) GetMetric(w http.ResponseWriter, req *http.Request) {
-	var m domain.Metrics
+	var m domain.Metric
 	if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
 		logger.Log.Info("cannot decode request JSON body", zap.Error(err))
 		w.WriteHeader(http.StatusBadRequest)
@@ -206,7 +206,12 @@ func (h *handler) GetMetric(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) GetAllMetrics(w http.ResponseWriter, req *http.Request) {
-	metrics := h.metricService.GetAllMetrics()
+	metrics, err := h.metricService.GetAllMetrics()
+	if err != nil {
+		http.Error(w, "", http.StatusInternalServerError)
+		logger.Log.Error("failed to get all metrics", zap.Error(err))
+		return
+	}
 	html := "<html><body><ul>"
 	for _, metric := range metrics {
 		switch metric.MType {

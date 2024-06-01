@@ -27,19 +27,13 @@ func run() error {
 	if err = logger.Initialize(cfg.LogLevel); err != nil {
 		return fmt.Errorf("can't load logger: %w", err)
 	}
-	gaugeStorage, err := storage.NewStorage(storage.Config{
-		Memory: &memory.Config{},
-	})
-	if err != nil {
-		return fmt.Errorf("no available storage for server: %w", err)
-	}
-	counterStorage, err := storage.NewStorage(storage.Config{
+	metricStorage, err := storage.NewStorage(storage.Config{
 		Memory: &memory.Config{},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to initialize a storage: %w", err)
 	}
-	metricService := service.NewMetricService(gaugeStorage, counterStorage)
+	metricService := service.NewMetricService(metricStorage)
 	api := rest.NewAPI(metricService, cfg)
 	if err := api.Run(); err != nil {
 		return fmt.Errorf("server has failed: %w", err)

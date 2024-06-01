@@ -40,7 +40,7 @@ func TestHandler_SetMetricValueSuccess(t *testing.T) {
 			url:  "/update/{metricType}/{metricName}/{metricValue}",
 			metric: Metric{
 				Name:  "someMetric",
-				Value: "13.0",
+				Value: "13.12",
 				Type:  domain.Gauge,
 			},
 			method: http.MethodPost,
@@ -73,13 +73,10 @@ func TestHandler_SetMetricValueSuccess(t *testing.T) {
 			rctx.URLParams.Add("metricType", tt.metric.Type)
 			rctx.URLParams.Add("metricValue", tt.metric.Value)
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
-			gaugeStorage, _ := storage.NewStorage(storage.Config{
+			metricStorage, _ := storage.NewStorage(storage.Config{
 				Memory: &memory.Config{},
 			})
-			counterStorage, _ := storage.NewStorage(storage.Config{
-				Memory: &memory.Config{},
-			})
-			metricService := service.NewMetricService(gaugeStorage, counterStorage)
+			metricService := service.NewMetricService(metricStorage)
 			h := handler{
 				metricService: metricService,
 			}
@@ -91,11 +88,8 @@ func TestHandler_SetMetricValueSuccess(t *testing.T) {
 			}()
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
 
-			value := h.metricService.GetMetricValue(&domain.MetricRequest{
-				MetricType: tt.metric.Type,
-				MetricName: tt.metric.Name,
-			})
-			assert.Equal(t, tt.metric.Value, value.MetricValue)
+			value, _ := h.metricService.GetMetricValue(tt.metric.Type, tt.metric.Name)
+			assert.Equal(t, tt.metric.Value, value)
 		})
 	}
 }
@@ -169,13 +163,10 @@ func TestHandler_SetMetricValueFailed(t *testing.T) {
 			rctx.URLParams.Add("metricType", tt.metric.Type)
 			rctx.URLParams.Add("metricValue", tt.metric.Value)
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
-			gaugeStorage, _ := storage.NewStorage(storage.Config{
+			metricStorage, _ := storage.NewStorage(storage.Config{
 				Memory: &memory.Config{},
 			})
-			counterStorage, _ := storage.NewStorage(storage.Config{
-				Memory: &memory.Config{},
-			})
-			metricService := service.NewMetricService(gaugeStorage, counterStorage)
+			metricService := service.NewMetricService(metricStorage)
 			h := handler{
 				metricService: metricService,
 			}

@@ -8,9 +8,9 @@ import (
 )
 
 type MetricStorage interface {
-	GetMetricValue(request *domain.MetricRequest) *domain.MetricResponse
-	SetMetricValue(request *domain.SetMetricRequest) *domain.SetMetricResponse
-	GetAllMetrics(request *domain.GetAllMetricsRequest) *domain.GetAllMetricsResponse
+	GetMetric(mType, mName string) (*domain.Metrics, error)
+	SetMetric(m *domain.Metrics) (*domain.Metrics, error)
+	GetAllMetrics() domain.MetricsList
 }
 
 func NewStorage(conf Config) (MetricStorage, error) {

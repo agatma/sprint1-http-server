@@ -1,70 +1,86 @@
 package service
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/agatma/sprint1-http-server/internal/server/core/domain"
 )
 
 type MetricStorage interface {
-	GetMetricValue(request *domain.MetricRequest) *domain.MetricResponse
-	SetMetricValue(request *domain.SetMetricRequest) *domain.SetMetricResponse
-	GetAllMetrics(request *domain.GetAllMetricsRequest) *domain.GetAllMetricsResponse
+	GetMetric(mType, mName string) (*domain.Metrics, error)
+	SetMetric(m *domain.Metrics) (*domain.Metrics, error)
+	GetAllMetrics() domain.MetricsList
 }
 
 type MetricService struct {
-	gaugeStorage   MetricStorage
-	counterStorage MetricStorage
+	storage MetricStorage
 }
 
-func NewMetricService(gauge MetricStorage, counter MetricStorage) *MetricService {
+func NewMetricService(storage MetricStorage) *MetricService {
 	return &MetricService{
-		gaugeStorage:   gauge,
-		counterStorage: counter,
+		storage: storage,
 	}
 }
 
-func (ms *MetricService) GetMetricValue(request *domain.MetricRequest) *domain.MetricResponse {
-	switch request.MetricType {
-	case domain.Gauge:
-		return ms.gaugeStorage.GetMetricValue(request)
-	case domain.Counter:
-		return ms.counterStorage.GetMetricValue(request)
+func (ms *MetricService) GetMetric(mType, mName string) (*domain.Metrics, error) {
+	return ms.storage.GetMetric(mType, mName)
+}
+
+func (ms *MetricService) SetMetric(m *domain.Metrics) (*domain.Metrics, error) {
+	switch m.MType {
+	case domain.Gauge, domain.Counter:
+		return ms.storage.SetMetric(m)
 	default:
-		return &domain.MetricResponse{
-			Error: domain.ErrIncorrectMetricType,
-		}
+		return &domain.Metrics{}, domain.ErrIncorrectMetricType
 	}
 }
 
-func (ms *MetricService) SetMetricValue(request *domain.SetMetricRequest) *domain.SetMetricResponse {
-	switch request.MetricType {
+func (ms *MetricService) SetMetricValue(req *domain.SetMetricRequest) (*domain.Metrics, error) {
+	switch req.MType {
 	case domain.Gauge:
-		_, err := strconv.ParseFloat(request.MetricValue, 64)
+		value, err := strconv.ParseFloat(req.Value, 64)
 		if err != nil {
-			return &domain.SetMetricResponse{
-				Error: domain.ErrIncorrectMetricValue,
-			}
+			return &domain.Metrics{}, domain.ErrIncorrectMetricValue
 		}
-		return ms.gaugeStorage.SetMetricValue(request)
+		return ms.storage.SetMetric(&domain.Metrics{
+			ID:    req.ID,
+			MType: req.MType,
+			Value: &value,
+		})
 	case domain.Counter:
-		return ms.counterStorage.SetMetricValue(request)
-	default:
-		return &domain.SetMetricResponse{
-			Error: domain.ErrIncorrectMetricType,
+		value, err := strconv.Atoi(req.Value)
+		if err != nil {
+			return &domain.Metrics{}, domain.ErrIncorrectMetricValue
 		}
+		valueInt := int64(value)
+		return ms.storage.SetMetric(&domain.Metrics{
+			ID:    req.ID,
+			MType: req.MType,
+			Delta: &valueInt,
+		})
+	default:
+		return &domain.Metrics{}, domain.ErrIncorrectMetricType
 	}
 }
 
-func (ms *MetricService) GetAllMetrics(request *domain.GetAllMetricsRequest) *domain.GetAllMetricsResponse {
-	switch request.MetricType {
-	case domain.Gauge:
-		return ms.gaugeStorage.GetAllMetrics(request)
-	case domain.Counter:
-		return ms.counterStorage.GetAllMetrics(request)
-	default:
-		return &domain.GetAllMetricsResponse{
-			Error: domain.ErrIncorrectMetricType,
-		}
+func (ms *MetricService) GetMetricValue(mType, mName string) (string, error) {
+	metric, err := ms.storage.GetMetric(mType, mName)
+	if err != nil {
+		return "", fmt.Errorf("%w", err)
 	}
+	switch mType {
+	case domain.Gauge:
+		value := strconv.FormatFloat(*metric.Value, 'f', -1, 64)
+		return value, nil
+	case domain.Counter:
+		value := strconv.Itoa(int(*metric.Delta))
+		return value, nil
+	default:
+		return "", domain.ErrIncorrectMetricType
+	}
+}
+
+func (ms *MetricService) GetAllMetrics() domain.MetricsList {
+	return ms.storage.GetAllMetrics()
 }

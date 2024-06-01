@@ -2,29 +2,24 @@ package file
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/agatma/sprint1-http-server/internal/server/core/domain"
 	"github.com/agatma/sprint1-http-server/internal/server/core/files"
 )
 
 type MetricStorage struct {
-	file *os.File
+	filepath string
 }
 
 func NewStorage(cfg *Config) (*MetricStorage, error) {
-	file, err := os.Create(cfg.Filepath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create file storage %w", err)
-	}
 	return &MetricStorage{
-		file: file,
+		filepath: cfg.Filepath,
 	}, nil
 }
 
 func (s *MetricStorage) SetMetric(m *domain.Metric) (*domain.Metric, error) {
 	var metric domain.Metric
-	metricValues, err := files.LoadMetricsFromFile(s.file)
+	metricValues, err := files.LoadMetricsFromFile(s.filepath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load metrics from file %w", err)
 	}
@@ -56,7 +51,7 @@ func (s *MetricStorage) SetMetric(m *domain.Metric) (*domain.Metric, error) {
 			Value: m.Value,
 		}
 	}
-	err = files.SaveMetricsToFile(s.file, metricValues)
+	err = files.SaveMetricsToFile(s.filepath, metricValues)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save metrics to file %w", err)
 	}
@@ -64,7 +59,7 @@ func (s *MetricStorage) SetMetric(m *domain.Metric) (*domain.Metric, error) {
 }
 
 func (s *MetricStorage) GetMetric(mType, mName string) (*domain.Metric, error) {
-	metricValues, err := files.LoadMetricsFromFile(s.file)
+	metricValues, err := files.LoadMetricsFromFile(s.filepath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load metrics from file %w", err)
 	}
@@ -82,7 +77,7 @@ func (s *MetricStorage) GetMetric(mType, mName string) (*domain.Metric, error) {
 }
 
 func (s *MetricStorage) GetAllMetrics() (domain.MetricsList, error) {
-	metricValues, err := files.LoadMetricsFromFile(s.file)
+	metricValues, err := files.LoadMetricsFromFile(s.filepath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load metrics from file %w", err)
 	}

@@ -1,6 +1,7 @@
 package files
 
 import (
+	"bytes"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -8,30 +9,42 @@ import (
 	"os"
 
 	"github.com/agatma/sprint1-http-server/internal/server/core/domain"
+	"github.com/agatma/sprint1-http-server/internal/server/logger"
+	"go.uber.org/zap"
 )
 
-func SaveMetricsToFile(file *os.File, metrics domain.MetricValues) error {
-	err := file.Truncate(0)
-	if err != nil {
-		return fmt.Errorf("%w", err)
-	}
-	_, err = file.Seek(0, 0)
-	if err != nil {
-		return fmt.Errorf("%w", err)
-	}
+func SaveMetricsToFile(filepath string, metrics domain.MetricValues) error {
+	file, err := os.Create(filepath)
+	defer func(f *os.File) {
+		err := file.Close()
+		if err != nil {
+			logger.Log.Error("failed to close file: %w", zap.Error(err))
+		}
+
+	}(file)
 	if err = gob.NewEncoder(file).Encode(metrics); err != nil {
 		return fmt.Errorf("%w", err)
 	}
 	return nil
 }
 
-func LoadMetricsFromFile(file *os.File) (domain.MetricValues, error) {
+func LoadMetricsFromFile(filepath string) (domain.MetricValues, error) {
 	var metricValues domain.MetricValues
-	_, err := file.Seek(0, 0)
-	if err != nil {
-		return metricValues, fmt.Errorf("failed to seek file position: %w", err)
+	if _, err := os.Stat(filepath); errors.Is(err, os.ErrNotExist) {
+		f, err := os.Create(filepath)
+		if err != nil {
+			return metricValues, fmt.Errorf("failed to create file: %w", err)
+		}
+		err = f.Close()
+		if err != nil {
+			return metricValues, fmt.Errorf("failed to close file: %w", err)
+		}
 	}
-	if err = gob.NewDecoder(file).Decode(&metricValues); err != nil {
+	data, err := os.ReadFile(filepath)
+	if err != nil {
+		return metricValues, fmt.Errorf("failed to read file: %w", err)
+	}
+	if err = gob.NewDecoder(bytes.NewReader(data)).Decode(&metricValues); err != nil {
 		if !errors.Is(err, io.EOF) {
 			return nil, fmt.Errorf("failed to decode file: %w", err)
 		}

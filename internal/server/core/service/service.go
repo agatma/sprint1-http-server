@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/agatma/sprint1-http-server/internal/server/config"
 	"github.com/agatma/sprint1-http-server/internal/server/core/domain"
+	"github.com/agatma/sprint1-http-server/internal/server/core/files"
 )
 
 type MetricStorage interface {
@@ -14,13 +16,23 @@ type MetricStorage interface {
 }
 
 type MetricService struct {
-	storage MetricStorage
+	storage  MetricStorage
+	filepath string
 }
 
-func NewMetricService(storage MetricStorage) *MetricService {
-	return &MetricService{
-		storage: storage,
+func NewMetricService(cfg *config.Config, storage MetricStorage) (*MetricService, error) {
+	ms := MetricService{
+		storage:  storage,
+		filepath: cfg.FileStoragePath,
 	}
+	if cfg.Restore {
+		err := ms.loadMetricsFromFile()
+		if err != nil {
+			return nil, fmt.Errorf("failed to restore data for metric service %w", err)
+		}
+	}
+	return &ms, nil
+
 }
 
 func (ms *MetricService) GetMetric(mType, mName string) (*domain.Metric, error) {
@@ -103,4 +115,39 @@ func (ms *MetricService) GetAllMetrics() (domain.MetricsList, error) {
 		return nil, fmt.Errorf("%w", err)
 	}
 	return metrics, nil
+}
+
+func (ms *MetricService) SaveMetricsToFile() error {
+	metricValues := make(domain.MetricValues)
+	metrics, err := ms.storage.GetAllMetrics()
+	if err != nil {
+		return fmt.Errorf("failed to get metrics for saving to file: %w", err)
+	}
+	for _, v := range metrics {
+		metricValues[domain.Key{ID: v.ID, MType: v.MType}] = domain.Value{Value: v.Value, Delta: v.Delta}
+	}
+	err = files.SaveMetricsToFile(ms.filepath, metricValues)
+	if err != nil {
+		return fmt.Errorf("failed to save metrics to file: %w", err)
+	}
+	return nil
+}
+
+func (ms *MetricService) loadMetricsFromFile() error {
+	metrics, err := files.LoadMetricsFromFile(ms.filepath)
+	if err != nil {
+		return fmt.Errorf("failed to load metrics for restore: %w", err)
+	}
+	for k, v := range metrics {
+		_, err := ms.storage.SetMetric(&domain.Metric{
+			ID:    k.ID,
+			MType: k.MType,
+			Value: v.Value,
+			Delta: v.Delta,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to save metrics in restore: %w", err)
+		}
+	}
+	return nil
 }

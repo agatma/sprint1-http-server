@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/agatma/sprint1-http-server/internal/server/adapters/api/rest"
 	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage"
@@ -22,31 +24,47 @@ func main() {
 
 func run() error {
 	cfg, err := config.NewConfig()
-	var metricStorage storage.MetricStorage
 	if err != nil {
 		return fmt.Errorf("can't load config: %w", err)
 	}
 	if err = logger.Initialize(cfg.LogLevel); err != nil {
 		return fmt.Errorf("can't load logger: %w", err)
 	}
+	metricStorage, err := initMetricStorage(cfg)
+	if err != nil {
+		return fmt.Errorf("failed to initialize a storage: %w", err)
+	}
+	metricService, err := service.NewMetricService(cfg, metricStorage)
+	api := rest.NewAPI(metricService, cfg)
+	if err := api.Run(); err != nil {
+		if errors.Is(err, http.ErrServerClosed) {
+			//metricService.SaveMetricsToFile()
+		}
+		return fmt.Errorf("server has failed: %w", err)
+	}
+	return nil
+}
+
+func initMetricStorage(cfg *config.Config) (storage.MetricStorage, error) {
 	if cfg.StoreInterval == 0 {
-		metricStorage, err = storage.NewStorage(storage.Config{
+		metricStorage, err := storage.NewStorage(storage.Config{
 			File: &file.Config{
 				Filepath: cfg.FileStoragePath,
 			},
 		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to init file storage %w", err)
+		}
+		logger.Log.Info("initialize file storage")
+		return metricStorage, nil
 	} else {
-		metricStorage, err = storage.NewStorage(storage.Config{
+		metricStorage, err := storage.NewStorage(storage.Config{
 			Memory: &memory.Config{},
 		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to init memory storage %w", err)
+		}
+		logger.Log.Info("initialize memory storage")
+		return metricStorage, nil
 	}
-	if err != nil {
-		return fmt.Errorf("failed to initialize a storage: %w", err)
-	}
-	metricService := service.NewMetricService(metricStorage)
-	api := rest.NewAPI(metricService, cfg)
-	if err := api.Run(); err != nil {
-		return fmt.Errorf("server has failed: %w", err)
-	}
-	return nil
 }

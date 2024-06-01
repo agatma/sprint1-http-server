@@ -13,6 +13,7 @@ import (
 
 	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage"
 	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage/memory"
+	"github.com/agatma/sprint1-http-server/internal/server/config"
 	"github.com/agatma/sprint1-http-server/internal/server/core/domain"
 	"github.com/agatma/sprint1-http-server/internal/server/core/service"
 	"github.com/agatma/sprint1-http-server/internal/server/logger"
@@ -64,6 +65,12 @@ func TestHandler_SetMetricValueSuccess(t *testing.T) {
 			},
 		},
 	}
+	cfg := &config.Config{}
+	metricStorage, _ := storage.NewStorage(storage.Config{
+		Memory: &memory.Config{},
+	})
+
+	metricService, _ := service.NewMetricService(cfg, metricStorage)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
@@ -73,10 +80,7 @@ func TestHandler_SetMetricValueSuccess(t *testing.T) {
 			rctx.URLParams.Add("metricType", tt.metric.Type)
 			rctx.URLParams.Add("metricValue", tt.metric.Value)
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
-			metricStorage, _ := storage.NewStorage(storage.Config{
-				Memory: &memory.Config{},
-			})
-			metricService := service.NewMetricService(metricStorage)
+
 			h := handler{
 				metricService: metricService,
 			}
@@ -154,6 +158,12 @@ func TestHandler_SetMetricValueFailed(t *testing.T) {
 			},
 		},
 	}
+	cfg := &config.Config{}
+	cfg.Restore = false
+	metricStorage, _ := storage.NewStorage(storage.Config{
+		Memory: &memory.Config{},
+	})
+	metricService, _ := service.NewMetricService(cfg, metricStorage)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
@@ -163,10 +173,7 @@ func TestHandler_SetMetricValueFailed(t *testing.T) {
 			rctx.URLParams.Add("metricType", tt.metric.Type)
 			rctx.URLParams.Add("metricValue", tt.metric.Value)
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
-			metricStorage, _ := storage.NewStorage(storage.Config{
-				Memory: &memory.Config{},
-			})
-			metricService := service.NewMetricService(metricStorage)
+
 			h := handler{
 				metricService: metricService,
 			}

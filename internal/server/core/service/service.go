@@ -45,7 +45,6 @@ func NewMetricService(cfg *config.Config, storage MetricStorage) (*MetricService
 		})
 	}
 	return &ms, nil
-
 }
 
 func (ms *MetricService) GetMetric(mType, mName string) (*domain.Metric, error) {

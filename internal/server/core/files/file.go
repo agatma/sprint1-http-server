@@ -15,12 +15,13 @@ import (
 
 func SaveMetricsToFile(filepath string, metrics domain.MetricValues) error {
 	file, err := os.Create(filepath)
+	if err != nil {
+		return fmt.Errorf("failed to create a file %w", err)
+	}
 	defer func(f *os.File) {
-		err := file.Close()
-		if err != nil {
+		if err = f.Close(); err != nil {
 			logger.Log.Error("failed to close file: %w", zap.Error(err))
 		}
-
 	}(file)
 	if err = gob.NewEncoder(file).Encode(metrics); err != nil {
 		return fmt.Errorf("%w", err)

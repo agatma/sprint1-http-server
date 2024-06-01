@@ -35,6 +35,9 @@ func run() error {
 		return fmt.Errorf("failed to initialize a storage: %w", err)
 	}
 	metricService, err := service.NewMetricService(cfg, metricStorage)
+	if err != nil {
+		return fmt.Errorf("failed to initialize a service: %w", err)
+	}
 	api := rest.NewAPI(metricService, cfg)
 	if err = api.Run(); err != nil {
 		if errors.Is(err, http.ErrServerClosed) {

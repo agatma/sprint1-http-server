@@ -45,6 +45,7 @@ func run() error {
 				return fmt.Errorf("failed to save metrics during shutdown: %w", err)
 			}
 			logger.Log.Info("metrics are saved to file")
+			return nil
 		}
 
 		return fmt.Errorf("server has failed: %w", err)

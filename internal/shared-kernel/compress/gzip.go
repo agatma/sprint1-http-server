@@ -8,19 +8,15 @@ import (
 )
 
 type Writer struct {
-	w  http.ResponseWriter
+	http.ResponseWriter
 	zw *gzip.Writer
 }
 
 func NewCompressWriter(w http.ResponseWriter) *Writer {
 	return &Writer{
-		w:  w,
-		zw: gzip.NewWriter(w),
+		w,
+		gzip.NewWriter(w),
 	}
-}
-
-func (c *Writer) Header() http.Header {
-	return c.w.Header()
 }
 
 func (c *Writer) Write(p []byte) (int, error) {
@@ -29,10 +25,6 @@ func (c *Writer) Write(p []byte) (int, error) {
 		return 0, fmt.Errorf("%w", err)
 	}
 	return n, nil
-}
-
-func (c *Writer) WriteHeader(statusCode int) {
-	c.w.WriteHeader(statusCode)
 }
 
 func (c *Writer) Close() error {

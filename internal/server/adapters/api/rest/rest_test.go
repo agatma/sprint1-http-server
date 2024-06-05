@@ -66,11 +66,16 @@ func TestHandler_SetMetricValueSuccess(t *testing.T) {
 		},
 	}
 	cfg := &config.Config{}
-	metricStorage, _ := storage.NewStorage(storage.Config{
+	metricStorage, err := storage.NewStorage(storage.Config{
 		Memory: &memory.Config{},
 	})
-
-	metricService, _ := service.NewMetricService(cfg, metricStorage)
+	if err != nil {
+		t.Error(err)
+	}
+	metricService, err := service.NewMetricService(cfg, metricStorage)
+	if err != nil {
+		t.Error(err)
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
@@ -160,10 +165,16 @@ func TestHandler_SetMetricValueFailed(t *testing.T) {
 	}
 	cfg := &config.Config{}
 	cfg.Restore = false
-	metricStorage, _ := storage.NewStorage(storage.Config{
+	metricStorage, err := storage.NewStorage(storage.Config{
 		Memory: &memory.Config{},
 	})
-	metricService, _ := service.NewMetricService(cfg, metricStorage)
+	if err != nil {
+		t.Error(err)
+	}
+	metricService, err := service.NewMetricService(cfg, metricStorage)
+	if err != nil {
+		t.Error(err)
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()

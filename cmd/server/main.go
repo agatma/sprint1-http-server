@@ -17,7 +17,6 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		log.Println(err)
 		log.Fatal(err)
 	}
 }

@@ -1,6 +1,6 @@
 package file
 
 type Config struct {
-	Filepath  string
-	SyncWrite bool
+	Filepath      string
+	StoreInterval int
 }

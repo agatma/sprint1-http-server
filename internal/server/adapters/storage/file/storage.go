@@ -16,12 +16,21 @@ type MetricStorage struct {
 }
 
 func NewStorage(cfg *Config) (*MetricStorage, error) {
-	return &MetricStorage{
-		filepath:  cfg.Filepath,
-		syncWrite: cfg.SyncWrite,
-		mux:       &sync.Mutex{},
-		metrics:   make(map[domain.Key]domain.Value),
-	}, nil
+	if cfg.StoreInterval == 0 {
+		return &MetricStorage{
+			filepath:  cfg.Filepath,
+			syncWrite: true,
+			mux:       &sync.Mutex{},
+			metrics:   make(map[domain.Key]domain.Value),
+		}, nil
+	} else {
+		return &MetricStorage{
+			filepath:  cfg.Filepath,
+			syncWrite: false,
+			mux:       &sync.Mutex{},
+			metrics:   make(map[domain.Key]domain.Value),
+		}, nil
+	}
 }
 
 func (s *MetricStorage) SetMetric(m *domain.Metric) (*domain.Metric, error) {

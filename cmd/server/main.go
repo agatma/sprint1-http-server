@@ -54,19 +54,7 @@ func run() error {
 }
 
 func initMetricStorage(cfg *config.Config) (storage.MetricStorage, error) {
-	if cfg.StoreInterval == 0 {
-		metricStorage, err := storage.NewStorage(storage.Config{
-			File: &file.Config{
-				Filepath:  cfg.FileStoragePath,
-				SyncWrite: true,
-			},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to init file storage %w", err)
-		}
-		logger.Log.Info("initialize file storage")
-		return metricStorage, nil
-	} else {
+	if cfg.FileStoragePath == "" {
 		metricStorage, err := storage.NewStorage(storage.Config{
 			Memory: &memory.Config{},
 		})
@@ -74,6 +62,18 @@ func initMetricStorage(cfg *config.Config) (storage.MetricStorage, error) {
 			return nil, fmt.Errorf("failed to init memory storage %w", err)
 		}
 		logger.Log.Info("initialize memory storage")
+		return metricStorage, nil
+	} else {
+		metricStorage, err := storage.NewStorage(storage.Config{
+			File: &file.Config{
+				Filepath:      cfg.FileStoragePath,
+				StoreInterval: cfg.StoreInterval,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to init file storage %w", err)
+		}
+		logger.Log.Info("initialize file storage")
 		return metricStorage, nil
 	}
 }

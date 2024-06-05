@@ -36,14 +36,17 @@ func NewMetricService(cfg *config.Config, storage MetricStorage) (*MetricService
 		}
 	}
 	if cfg.StoreInterval > 0 {
-		timeDuration := time.Duration(cfg.StoreInterval) * time.Second
-		time.AfterFunc(timeDuration, func() {
-			err := ms.SaveMetricsToFile()
-			if err != nil {
-				logger.Log.Error("failed to save metrics", zap.Error(err))
+		go func() {
+			t := time.NewTicker(time.Duration(cfg.StoreInterval) * time.Second)
+			for {
+				<-t.C
+				err := ms.SaveMetricsToFile()
+				if err != nil {
+					logger.Log.Error("failed to save metrics", zap.Error(err))
+				}
+				logger.Log.Info("metrics saved to file after timeout", zap.Int("seconds", cfg.StoreInterval))
 			}
-			logger.Log.Info("metrics saved to file after timeout", zap.Int("seconds", cfg.StoreInterval))
-		})
+		}()
 	}
 	return &ms, nil
 }

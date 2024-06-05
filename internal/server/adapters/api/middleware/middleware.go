@@ -51,6 +51,9 @@ func LoggingRequestMiddleware(h http.Handler) http.Handler {
 		}
 		h.ServeHTTP(&lw, r)
 		duration := time.Since(start)
+		if respData.status == 0 {
+			respData.status = 200
+		}
 		logger.Log.Info("got incoming http request",
 			zap.String("method", r.Method),
 			zap.String("uri", r.RequestURI),

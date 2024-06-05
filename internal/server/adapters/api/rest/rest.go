@@ -216,10 +216,13 @@ func (h *handler) GetAllMetrics(w http.ResponseWriter, req *http.Request) {
 	for _, metric := range metrics {
 		switch metric.MType {
 		case domain.Gauge:
-			html += fmt.Sprintf("<li>mType: %s, mName: %s, Value %v", metric.MType, metric.ID, *metric.Value)
-
+			if metric.Value != nil {
+				html += fmt.Sprintf("<li>mType: %s, mName: %s, Value %v", metric.MType, metric.ID, *metric.Value)
+			}
 		case domain.Counter:
-			html += fmt.Sprintf("<li>mType: %s, mName: %s, Value %v", metric.MType, metric.ID, *metric.Delta)
+			if metric.Delta != nil {
+				html += fmt.Sprintf("<li>mType: %s, mName: %s, Value %v", metric.MType, metric.ID, *metric.Delta)
+			}
 		}
 	}
 	html += "</ul></body></html>"

@@ -2,41 +2,45 @@ package file
 
 import (
 	"fmt"
+	"metrics/internal/server/core/files"
+	"sync"
 
 	"metrics/internal/server/core/domain"
-	"metrics/internal/server/core/files"
 )
 
 type MetricStorage struct {
-	filepath string
+	filepath  string
+	syncWrite bool
+	mux       *sync.Mutex
+	metrics   map[domain.Key]domain.Value
 }
 
 func NewStorage(cfg *Config) (*MetricStorage, error) {
 	return &MetricStorage{
-		filepath: cfg.Filepath,
+		filepath:  cfg.Filepath,
+		syncWrite: cfg.SyncWrite,
+		mux:       &sync.Mutex{},
+		metrics:   make(map[domain.Key]domain.Value),
 	}, nil
 }
 
 func (s *MetricStorage) SetMetric(m *domain.Metric) (*domain.Metric, error) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
 	var metric domain.Metric
-	metricValues, err := files.LoadMetricsFromFile(s.filepath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load metrics from file %w", err)
-	}
 	key := domain.Key{MType: m.MType, ID: m.ID}
 	if m.MType == domain.Counter {
-		value, found := metricValues[key]
+		value, found := s.metrics[key]
 		if found {
 			*value.Delta += *m.Delta
-			metricValues[key] = domain.Value{Delta: value.Delta}
-
+			s.metrics[key] = domain.Value{Delta: value.Delta}
 			metric = domain.Metric{
 				ID:    m.ID,
 				MType: m.MType,
 				Delta: value.Delta,
 			}
 		} else {
-			metricValues[key] = domain.Value{Delta: m.Delta}
+			s.metrics[key] = domain.Value{Delta: m.Delta}
 			metric = domain.Metric{
 				ID:    m.ID,
 				MType: m.MType,
@@ -44,27 +48,26 @@ func (s *MetricStorage) SetMetric(m *domain.Metric) (*domain.Metric, error) {
 			}
 		}
 	} else {
-		metricValues[key] = domain.Value{Value: m.Value}
+		s.metrics[key] = domain.Value{Value: m.Value}
 		metric = domain.Metric{
 			ID:    m.ID,
 			MType: m.MType,
 			Value: m.Value,
 		}
 	}
-	err = files.SaveMetricsToFile(s.filepath, metricValues)
-	if err != nil {
-		return nil, fmt.Errorf("failed to save metrics to file %w", err)
+	if s.syncWrite {
+		err := files.SaveMetricsToFile(s.filepath, s.metrics)
+		if err != nil {
+			return nil, fmt.Errorf("failed to save metrics to file %w", err)
+		}
 	}
 	return &metric, nil
 }
 
 func (s *MetricStorage) GetMetric(mType, mName string) (*domain.Metric, error) {
-	metricValues, err := files.LoadMetricsFromFile(s.filepath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load metrics from file %w", err)
-	}
-	key := domain.Key{MType: mType, ID: mName}
-	value, found := metricValues[key]
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	value, found := s.metrics[domain.Key{MType: mType, ID: mName}]
 	if !found {
 		return &domain.Metric{}, domain.ErrItemNotFound
 	}
@@ -77,12 +80,10 @@ func (s *MetricStorage) GetMetric(mType, mName string) (*domain.Metric, error) {
 }
 
 func (s *MetricStorage) GetAllMetrics() (domain.MetricsList, error) {
-	metricValues, err := files.LoadMetricsFromFile(s.filepath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load metrics from file %w", err)
-	}
+	s.mux.Lock()
+	defer s.mux.Unlock()
 	metrics := make(domain.MetricsList, 0)
-	for k, v := range metricValues {
+	for k, v := range s.metrics {
 		metrics = append(metrics, domain.Metric{
 			ID:    k.ID,
 			MType: k.MType,

@@ -57,7 +57,8 @@ func initMetricStorage(cfg *config.Config) (storage.MetricStorage, error) {
 	if cfg.StoreInterval == 0 {
 		metricStorage, err := storage.NewStorage(storage.Config{
 			File: &file.Config{
-				Filepath: cfg.FileStoragePath,
+				Filepath:  cfg.FileStoragePath,
+				SyncWrite: true,
 			},
 		})
 		if err != nil {

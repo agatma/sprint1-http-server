@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage/file"
-	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage/memory"
-	"github.com/agatma/sprint1-http-server/internal/server/core/domain"
+	"metrics/internal/server/adapters/storage/file"
+	"metrics/internal/server/adapters/storage/memory"
+	"metrics/internal/server/core/domain"
 )
 
 type MetricStorage interface {

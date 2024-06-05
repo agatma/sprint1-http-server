@@ -1,4 +1,4 @@
-module github.com/agatma/sprint1-http-server
+module metrics
 
 go 1.22.2
 

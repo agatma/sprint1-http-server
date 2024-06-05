@@ -7,9 +7,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/agatma/sprint1-http-server/internal/agent/config"
+	"metrics/internal/agent/config"
 
-	"github.com/agatma/sprint1-http-server/internal/server/logger"
+	"metrics/internal/server/logger"
 )
 
 type AgentMetricService interface {

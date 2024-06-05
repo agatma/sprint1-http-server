@@ -3,8 +3,8 @@ package file
 import (
 	"fmt"
 
-	"github.com/agatma/sprint1-http-server/internal/server/core/domain"
-	"github.com/agatma/sprint1-http-server/internal/server/core/files"
+	"metrics/internal/server/core/domain"
+	"metrics/internal/server/core/files"
 )
 
 type MetricStorage struct {

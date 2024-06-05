@@ -7,8 +7,8 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/agatma/sprint1-http-server/internal/agent/core/domain"
-	"github.com/agatma/sprint1-http-server/internal/agent/core/handlers"
+	"metrics/internal/agent/core/domain"
+	"metrics/internal/agent/core/handlers"
 )
 
 type AgentMetricStorage interface {

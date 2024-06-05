@@ -5,10 +5,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/agatma/sprint1-http-server/internal/server/config"
-	"github.com/agatma/sprint1-http-server/internal/server/core/domain"
-	"github.com/agatma/sprint1-http-server/internal/server/core/files"
-	"github.com/agatma/sprint1-http-server/internal/server/logger"
+	"metrics/internal/server/config"
+	"metrics/internal/server/core/domain"
+	"metrics/internal/server/core/files"
+	"metrics/internal/server/logger"
+
 	"go.uber.org/zap"
 )
 

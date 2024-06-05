@@ -6,13 +6,13 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/agatma/sprint1-http-server/internal/server/adapters/api/rest"
-	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage"
-	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage/file"
-	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage/memory"
-	"github.com/agatma/sprint1-http-server/internal/server/config"
-	"github.com/agatma/sprint1-http-server/internal/server/core/service"
-	"github.com/agatma/sprint1-http-server/internal/server/logger"
+	"metrics/internal/server/adapters/api/rest"
+	"metrics/internal/server/adapters/storage"
+	"metrics/internal/server/adapters/storage/file"
+	"metrics/internal/server/adapters/storage/memory"
+	"metrics/internal/server/config"
+	"metrics/internal/server/core/service"
+	"metrics/internal/server/logger"
 )
 
 func main() {

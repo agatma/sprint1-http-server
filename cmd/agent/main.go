@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/agatma/sprint1-http-server/internal/agent/adapters/storage"
-	"github.com/agatma/sprint1-http-server/internal/agent/adapters/storage/memory"
-	"github.com/agatma/sprint1-http-server/internal/agent/adapters/workers"
-	"github.com/agatma/sprint1-http-server/internal/agent/config"
-	"github.com/agatma/sprint1-http-server/internal/agent/core/service"
-	"github.com/agatma/sprint1-http-server/internal/agent/logger"
+	"metrics/internal/agent/adapters/storage"
+	"metrics/internal/agent/adapters/storage/memory"
+	"metrics/internal/agent/adapters/workers"
+	"metrics/internal/agent/config"
+	"metrics/internal/agent/core/service"
+	"metrics/internal/agent/logger"
 )
 
 func main() {

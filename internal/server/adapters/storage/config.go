@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage/file"
-	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage/memory"
+	"metrics/internal/server/adapters/storage/file"
+	"metrics/internal/server/adapters/storage/memory"
 )
 
 type Config struct {

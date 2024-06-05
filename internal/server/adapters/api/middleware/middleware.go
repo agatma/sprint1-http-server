@@ -10,8 +10,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/agatma/sprint1-http-server/internal/server/logger"
-	"github.com/agatma/sprint1-http-server/internal/shared-kernel/compress"
+	"metrics/internal/server/logger"
+	"metrics/internal/shared-kernel/compress"
 )
 
 type responseData struct {

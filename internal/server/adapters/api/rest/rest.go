@@ -15,10 +15,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 
-	"github.com/agatma/sprint1-http-server/internal/server/adapters/api/middleware"
-	"github.com/agatma/sprint1-http-server/internal/server/config"
-	"github.com/agatma/sprint1-http-server/internal/server/core/domain"
-	"github.com/agatma/sprint1-http-server/internal/server/logger"
+	"metrics/internal/server/adapters/api/middleware"
+	"metrics/internal/server/config"
+	"metrics/internal/server/core/domain"
+	"metrics/internal/server/logger"
 )
 
 const (

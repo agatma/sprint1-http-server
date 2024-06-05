@@ -8,10 +8,10 @@ import (
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
 
-	"github.com/agatma/sprint1-http-server/internal/shared-kernel/compress"
+	"metrics/internal/shared-kernel/compress"
 
-	"github.com/agatma/sprint1-http-server/internal/agent/core/domain"
-	"github.com/agatma/sprint1-http-server/internal/agent/logger"
+	"metrics/internal/agent/core/domain"
+	"metrics/internal/agent/logger"
 )
 
 func SendMetrics(host string, request *domain.MetricRequestJSON) error {

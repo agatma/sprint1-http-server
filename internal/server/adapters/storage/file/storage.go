@@ -8,27 +8,33 @@ import (
 	"metrics/internal/server/core/domain"
 )
 
+type InMemoryStore struct {
+	mux     *sync.Mutex
+	metrics map[domain.Key]domain.Value
+}
+
 type MetricStorage struct {
+	InMemoryStore
 	filepath  string
 	syncWrite bool
-	mux       *sync.Mutex
-	metrics   map[domain.Key]domain.Value
 }
 
 func NewStorage(cfg *Config) (*MetricStorage, error) {
+	inMemoryStore := InMemoryStore{
+		mux:     &sync.Mutex{},
+		metrics: make(map[domain.Key]domain.Value),
+	}
 	if cfg.StoreInterval == 0 {
 		return &MetricStorage{
-			filepath:  cfg.Filepath,
-			syncWrite: true,
-			mux:       &sync.Mutex{},
-			metrics:   make(map[domain.Key]domain.Value),
+			inMemoryStore,
+			cfg.Filepath,
+			true,
 		}, nil
 	} else {
 		return &MetricStorage{
-			filepath:  cfg.Filepath,
-			syncWrite: false,
-			mux:       &sync.Mutex{},
-			metrics:   make(map[domain.Key]domain.Value),
+			inMemoryStore,
+			cfg.Filepath,
+			false,
 		}, nil
 	}
 }

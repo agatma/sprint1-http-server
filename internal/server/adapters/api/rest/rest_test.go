@@ -71,10 +71,12 @@ func TestHandler_SetMetricValueSuccess(t *testing.T) {
 	})
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	metricService, err := service.NewMetricService(cfg, metricStorage)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -170,10 +172,12 @@ func TestHandler_SetMetricValueFailed(t *testing.T) {
 	})
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	metricService, err := service.NewMetricService(cfg, metricStorage)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

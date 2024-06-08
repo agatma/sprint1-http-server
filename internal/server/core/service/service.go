@@ -17,6 +17,7 @@ type MetricStorage interface {
 	GetMetric(mType, mName string) (*domain.Metric, error)
 	SetMetric(m *domain.Metric) (*domain.Metric, error)
 	GetAllMetrics() (domain.MetricsList, error)
+	Ping() error
 }
 
 type MetricService struct {
@@ -131,6 +132,14 @@ func (ms *MetricService) GetAllMetrics() (domain.MetricsList, error) {
 		return nil, fmt.Errorf("%w", err)
 	}
 	return metrics, nil
+}
+
+func (ms *MetricService) Ping() error {
+	err := ms.storage.Ping()
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	return nil
 }
 
 func (ms *MetricService) SaveMetricsToFile() error {

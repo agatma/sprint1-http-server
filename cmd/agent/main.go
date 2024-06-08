@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/agatma/sprint1-http-server/internal/agent/adapters/storage"
-	"github.com/agatma/sprint1-http-server/internal/agent/adapters/storage/memory"
-	"github.com/agatma/sprint1-http-server/internal/agent/adapters/workers"
-	"github.com/agatma/sprint1-http-server/internal/agent/core/service"
+	"metrics/internal/agent/adapters/storage"
+	"metrics/internal/agent/adapters/storage/memory"
+	"metrics/internal/agent/adapters/workers"
+	"metrics/internal/agent/config"
+	"metrics/internal/agent/core/service"
+	"metrics/internal/agent/logger"
 )
 
 func main() {
@@ -17,9 +19,12 @@ func main() {
 }
 
 func run() error {
-	cfg, err := workers.NewConfig()
+	cfg, err := config.NewConfig()
 	if err != nil {
 		return fmt.Errorf("can't load config: %w", err)
+	}
+	if err = logger.Initialize(cfg.LogLevel); err != nil {
+		return fmt.Errorf("can't load logger: %w", err)
 	}
 	gaugeAgentStorage, err := storage.NewAgentStorage(storage.Config{
 		Memory: &memory.Config{},

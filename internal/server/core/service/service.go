@@ -1,70 +1,169 @@
 package service
 
 import (
+	"fmt"
 	"strconv"
+	"time"
 
-	"github.com/agatma/sprint1-http-server/internal/server/core/domain"
+	"metrics/internal/server/config"
+	"metrics/internal/server/core/domain"
+	"metrics/internal/server/core/files"
+	"metrics/internal/server/logger"
+
+	"go.uber.org/zap"
 )
 
 type MetricStorage interface {
-	GetMetricValue(request *domain.MetricRequest) *domain.MetricResponse
-	SetMetricValue(request *domain.SetMetricRequest) *domain.SetMetricResponse
-	GetAllMetrics(request *domain.GetAllMetricsRequest) *domain.GetAllMetricsResponse
+	GetMetric(mType, mName string) (*domain.Metric, error)
+	SetMetric(m *domain.Metric) (*domain.Metric, error)
+	GetAllMetrics() (domain.MetricsList, error)
 }
 
 type MetricService struct {
-	gaugeStorage   MetricStorage
-	counterStorage MetricStorage
+	storage  MetricStorage
+	filepath string
 }
 
-func NewMetricService(gauge MetricStorage, counter MetricStorage) *MetricService {
-	return &MetricService{
-		gaugeStorage:   gauge,
-		counterStorage: counter,
+func NewMetricService(cfg *config.Config, storage MetricStorage) (*MetricService, error) {
+	ms := MetricService{
+		storage:  storage,
+		filepath: cfg.FileStoragePath,
 	}
-}
-
-func (ms *MetricService) GetMetricValue(request *domain.MetricRequest) *domain.MetricResponse {
-	switch request.MetricType {
-	case domain.Gauge:
-		return ms.gaugeStorage.GetMetricValue(request)
-	case domain.Counter:
-		return ms.counterStorage.GetMetricValue(request)
-	default:
-		return &domain.MetricResponse{
-			Error: domain.ErrIncorrectMetricType,
-		}
-	}
-}
-
-func (ms *MetricService) SetMetricValue(request *domain.SetMetricRequest) *domain.SetMetricResponse {
-	switch request.MetricType {
-	case domain.Gauge:
-		_, err := strconv.ParseFloat(request.MetricValue, 64)
+	if cfg.Restore {
+		err := ms.loadMetricsFromFile()
 		if err != nil {
-			return &domain.SetMetricResponse{
-				Error: domain.ErrIncorrectMetricValue,
+			return nil, fmt.Errorf("failed to restore data for metric service %w", err)
+		}
+	}
+	if cfg.StoreInterval > 0 {
+		go func() {
+			t := time.NewTicker(time.Duration(cfg.StoreInterval) * time.Second)
+			for {
+				<-t.C
+				err := ms.SaveMetricsToFile()
+				if err != nil {
+					logger.Log.Error("failed to save metrics", zap.Error(err))
+				}
+				logger.Log.Info("metrics saved to file after timeout", zap.Int("seconds", cfg.StoreInterval))
 			}
+		}()
+	}
+	return &ms, nil
+}
+
+func (ms *MetricService) GetMetric(mType, mName string) (*domain.Metric, error) {
+	metric, err := ms.storage.GetMetric(mType, mName)
+	if err != nil {
+		return metric, fmt.Errorf("failed to get metric: %w", err)
+	}
+	return metric, nil
+}
+
+func (ms *MetricService) SetMetric(m *domain.Metric) (*domain.Metric, error) {
+	switch m.MType {
+	case domain.Gauge, domain.Counter:
+		metric, err := ms.storage.SetMetric(m)
+		if err != nil {
+			return metric, fmt.Errorf("%w", err)
 		}
-		return ms.gaugeStorage.SetMetricValue(request)
-	case domain.Counter:
-		return ms.counterStorage.SetMetricValue(request)
+		return metric, nil
 	default:
-		return &domain.SetMetricResponse{
-			Error: domain.ErrIncorrectMetricType,
-		}
+		return &domain.Metric{}, domain.ErrIncorrectMetricType
 	}
 }
 
-func (ms *MetricService) GetAllMetrics(request *domain.GetAllMetricsRequest) *domain.GetAllMetricsResponse {
-	switch request.MetricType {
+func (ms *MetricService) SetMetricValue(req *domain.SetMetricRequest) (*domain.Metric, error) {
+	switch req.MType {
 	case domain.Gauge:
-		return ms.gaugeStorage.GetAllMetrics(request)
+		value, err := strconv.ParseFloat(req.Value, 64)
+		if err != nil {
+			return &domain.Metric{}, domain.ErrIncorrectMetricValue
+		}
+		metric, err := ms.storage.SetMetric(&domain.Metric{
+			ID:    req.ID,
+			MType: req.MType,
+			Value: &value,
+		})
+		if err != nil {
+			return metric, fmt.Errorf("%w", err)
+		}
+		return metric, nil
 	case domain.Counter:
-		return ms.counterStorage.GetAllMetrics(request)
+		value, err := strconv.Atoi(req.Value)
+		if err != nil {
+			return &domain.Metric{}, domain.ErrIncorrectMetricValue
+		}
+		valueInt := int64(value)
+		metric, err := ms.storage.SetMetric(&domain.Metric{
+			ID:    req.ID,
+			MType: req.MType,
+			Delta: &valueInt,
+		})
+		if err != nil {
+			return metric, fmt.Errorf("%w", err)
+		}
+		return metric, nil
 	default:
-		return &domain.GetAllMetricsResponse{
-			Error: domain.ErrIncorrectMetricType,
+		return &domain.Metric{}, domain.ErrIncorrectMetricType
+	}
+}
+
+func (ms *MetricService) GetMetricValue(mType, mName string) (string, error) {
+	metric, err := ms.storage.GetMetric(mType, mName)
+	if err != nil {
+		return "", fmt.Errorf("%w", err)
+	}
+	switch mType {
+	case domain.Gauge:
+		value := strconv.FormatFloat(*metric.Value, 'f', -1, 64)
+		return value, nil
+	case domain.Counter:
+		value := strconv.Itoa(int(*metric.Delta))
+		return value, nil
+	default:
+		return "", domain.ErrIncorrectMetricType
+	}
+}
+
+func (ms *MetricService) GetAllMetrics() (domain.MetricsList, error) {
+	metrics, err := ms.storage.GetAllMetrics()
+	if err != nil {
+		return nil, fmt.Errorf("%w", err)
+	}
+	return metrics, nil
+}
+
+func (ms *MetricService) SaveMetricsToFile() error {
+	metricValues := make(domain.MetricValues)
+	metrics, err := ms.storage.GetAllMetrics()
+	if err != nil {
+		return fmt.Errorf("failed to get metrics for saving to file: %w", err)
+	}
+	for _, v := range metrics {
+		metricValues[domain.Key{ID: v.ID, MType: v.MType}] = domain.Value{Value: v.Value, Delta: v.Delta}
+	}
+	err = files.SaveMetricsToFile(ms.filepath, metricValues)
+	if err != nil {
+		return fmt.Errorf("failed to save metrics to file: %w", err)
+	}
+	return nil
+}
+
+func (ms *MetricService) loadMetricsFromFile() error {
+	metrics, err := files.LoadMetricsFromFile(ms.filepath)
+	if err != nil {
+		return fmt.Errorf("failed to load metrics for restore: %w", err)
+	}
+	for k, v := range metrics {
+		_, err := ms.storage.SetMetric(&domain.Metric{
+			ID:    k.ID,
+			MType: k.MType,
+			Value: v.Value,
+			Delta: v.Delta,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to save metrics in restore: %w", err)
 		}
 	}
+	return nil
 }

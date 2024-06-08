@@ -3,18 +3,20 @@ package rest
 import (
 	"bytes"
 	"context"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 
-	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage"
-	"github.com/agatma/sprint1-http-server/internal/server/adapters/storage/memory"
-	"github.com/agatma/sprint1-http-server/internal/server/core/domain"
-	"github.com/agatma/sprint1-http-server/internal/server/core/service"
+	"metrics/internal/server/adapters/storage"
+	"metrics/internal/server/adapters/storage/memory"
+	"metrics/internal/server/config"
+	"metrics/internal/server/core/domain"
+	"metrics/internal/server/core/service"
+	"metrics/internal/server/logger"
 )
 
 func TestHandler_SetMetricValueSuccess(t *testing.T) {
@@ -39,7 +41,7 @@ func TestHandler_SetMetricValueSuccess(t *testing.T) {
 			url:  "/update/{metricType}/{metricName}/{metricValue}",
 			metric: Metric{
 				Name:  "someMetric",
-				Value: "13.0",
+				Value: "13.12",
 				Type:  domain.Gauge,
 			},
 			method: http.MethodPost,
@@ -63,6 +65,19 @@ func TestHandler_SetMetricValueSuccess(t *testing.T) {
 			},
 		},
 	}
+	cfg := &config.Config{}
+	metricStorage, err := storage.NewStorage(storage.Config{
+		Memory: &memory.Config{},
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	metricService, err := service.NewMetricService(cfg, metricStorage)
+	if err != nil {
+		t.Error(err)
+		return
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
@@ -72,13 +87,7 @@ func TestHandler_SetMetricValueSuccess(t *testing.T) {
 			rctx.URLParams.Add("metricType", tt.metric.Type)
 			rctx.URLParams.Add("metricValue", tt.metric.Value)
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
-			gaugeStorage, _ := storage.NewStorage(storage.Config{
-				Memory: &memory.Config{},
-			})
-			counterStorage, _ := storage.NewStorage(storage.Config{
-				Memory: &memory.Config{},
-			})
-			metricService := service.NewMetricService(gaugeStorage, counterStorage)
+
 			h := handler{
 				metricService: metricService,
 			}
@@ -86,15 +95,12 @@ func TestHandler_SetMetricValueSuccess(t *testing.T) {
 			result := w.Result()
 			defer func() {
 				err := result.Body.Close()
-				log.Print("error occurred body close: %w", err)
+				logger.Log.Error("error occurred during closing body", zap.Error(err))
 			}()
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
 
-			value := h.metricService.GetMetricValue(&domain.MetricRequest{
-				MetricType: tt.metric.Type,
-				MetricName: tt.metric.Name,
-			})
-			assert.Equal(t, tt.metric.Value, value.MetricValue)
+			value, _ := h.metricService.GetMetricValue(tt.metric.Type, tt.metric.Name)
+			assert.Equal(t, tt.metric.Value, value)
 		})
 	}
 }
@@ -159,6 +165,20 @@ func TestHandler_SetMetricValueFailed(t *testing.T) {
 			},
 		},
 	}
+	cfg := &config.Config{}
+	cfg.Restore = false
+	metricStorage, err := storage.NewStorage(storage.Config{
+		Memory: &memory.Config{},
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	metricService, err := service.NewMetricService(cfg, metricStorage)
+	if err != nil {
+		t.Error(err)
+		return
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
@@ -168,13 +188,7 @@ func TestHandler_SetMetricValueFailed(t *testing.T) {
 			rctx.URLParams.Add("metricType", tt.metric.Type)
 			rctx.URLParams.Add("metricValue", tt.metric.Value)
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
-			gaugeStorage, _ := storage.NewStorage(storage.Config{
-				Memory: &memory.Config{},
-			})
-			counterStorage, _ := storage.NewStorage(storage.Config{
-				Memory: &memory.Config{},
-			})
-			metricService := service.NewMetricService(gaugeStorage, counterStorage)
+
 			h := handler{
 				metricService: metricService,
 			}
@@ -182,7 +196,7 @@ func TestHandler_SetMetricValueFailed(t *testing.T) {
 			result := w.Result()
 			defer func() {
 				err := result.Body.Close()
-				log.Print("error occurred body close: %w", err)
+				logger.Log.Error("error occurred during closing body", zap.Error(err))
 			}()
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
 		})

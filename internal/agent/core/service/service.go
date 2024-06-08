@@ -7,8 +7,8 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/agatma/sprint1-http-server/internal/agent/core/domain"
-	"github.com/agatma/sprint1-http-server/internal/agent/core/handlers"
+	"metrics/internal/agent/core/domain"
+	"metrics/internal/agent/core/handlers"
 )
 
 type AgentMetricStorage interface {
@@ -118,7 +118,16 @@ func (a *AgentMetricService) SendMetrics(host string) error {
 		MetricType: domain.Gauge,
 	})
 	for metricName, metricValue := range response.Values {
-		err := handlers.SendMetrics(host, domain.Gauge, metricName, metricValue)
+		gaugeValue, err := strconv.ParseFloat(metricValue, 64)
+		if err != nil {
+			return fmt.Errorf("error occured during parsing metrics: %w", err)
+		}
+		request := domain.MetricRequestJSON{
+			ID:    metricName,
+			MType: domain.Gauge,
+			Value: &gaugeValue,
+		}
+		err = handlers.SendMetrics(host, &request)
 		if err != nil {
 			return fmt.Errorf("error occured during sending metrics: %w", err)
 		}
@@ -130,7 +139,17 @@ func (a *AgentMetricService) SendMetrics(host string) error {
 		return fmt.Errorf("error occured geting metrics: %w", response.Error)
 	}
 	for metricName, metricValue := range response.Values {
-		err := handlers.SendMetrics(host, domain.Counter, metricName, metricValue)
+		counterValue, err := strconv.Atoi(metricValue)
+		counterInt64Value := int64(counterValue)
+		if err != nil {
+			return fmt.Errorf("error occured during parsing metrics: %w", err)
+		}
+		request := domain.MetricRequestJSON{
+			ID:    metricName,
+			MType: domain.Counter,
+			Delta: &counterInt64Value,
+		}
+		err = handlers.SendMetrics(host, &request)
 		if err != nil {
 			return fmt.Errorf("error occured during sending metrics: %w", err)
 		}

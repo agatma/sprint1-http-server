@@ -3,7 +3,7 @@ package memory
 import (
 	"sync"
 
-	"github.com/agatma/sprint1-http-server/internal/agent/core/domain"
+	"metrics/internal/agent/core/domain"
 )
 
 type AgentMetricStorage struct {

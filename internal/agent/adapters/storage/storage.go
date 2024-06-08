@@ -3,8 +3,8 @@ package storage
 import (
 	"errors"
 
-	"github.com/agatma/sprint1-http-server/internal/agent/adapters/storage/memory"
-	"github.com/agatma/sprint1-http-server/internal/agent/core/domain"
+	"metrics/internal/agent/adapters/storage/memory"
+	"metrics/internal/agent/core/domain"
 )
 
 type AgentMetricStorage interface {

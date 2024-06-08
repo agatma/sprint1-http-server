@@ -4,6 +4,12 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"go.uber.org/zap"
+
+	"metrics/internal/agent/config"
+
+	"metrics/internal/server/logger"
 )
 
 type AgentMetricService interface {
@@ -13,10 +19,10 @@ type AgentMetricService interface {
 
 type AgentWorker struct {
 	agentMetricService AgentMetricService
-	config             *Config
+	config             *config.Config
 }
 
-func NewAgentWorker(agentMetricService AgentMetricService, cfg *Config) *AgentWorker {
+func NewAgentWorker(agentMetricService AgentMetricService, cfg *config.Config) *AgentWorker {
 	return &AgentWorker{
 		agentMetricService: agentMetricService,
 		config:             cfg,
@@ -44,7 +50,7 @@ func (a *AgentWorker) Run() error {
 		case <-sendMetricsTicker.C:
 			err := a.agentMetricService.SendMetrics(host)
 			if err != nil {
-				return fmt.Errorf("failed to send metrics %w", err)
+				logger.Log.Error("failed to send metrics", zap.Error(err))
 			}
 			pollCount = 0
 		}

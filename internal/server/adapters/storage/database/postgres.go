@@ -20,7 +20,7 @@ type MetricStorage struct {
 func NewStorage(cfg *Config) (*MetricStorage, error) {
 	db, err := sqlx.Open("pgx", cfg.DSN)
 	if err != nil {
-		return nil, fmt.Errorf("%w", err)
+		return nil, fmt.Errorf("failed to open database %w", err)
 	}
 	return &MetricStorage{db: db}, migrate(db, 1)
 }
@@ -123,16 +123,13 @@ func (s *MetricStorage) GetAllMetrics() (domain.MetricsList, error) {
 
 		metrics = append(metrics, m)
 	}
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("%w", err)
-	}
 	defer func() {
 		err := rows.Close()
 		if err != nil {
 			logger.Log.Error("error occurred during closing rows", zap.Error(err))
 		}
 	}()
+	err = rows.Err()
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}
@@ -142,7 +139,7 @@ func (s *MetricStorage) GetAllMetrics() (domain.MetricsList, error) {
 func (s *MetricStorage) Ping() error {
 	ctx := context.Background()
 	if err := s.db.PingContext(ctx); err != nil {
-		return fmt.Errorf("%w", err)
+		return fmt.Errorf("failed to ping database %w", err)
 	}
 	return nil
 }

@@ -22,6 +22,9 @@ func NewStorage(cfg *Config) (*MetricStorage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database %w", err)
 	}
+	if err = db.Ping(); err != nil {
+		return nil, err
+	}
 	return &MetricStorage{db: db}, migrate(db, 1)
 }
 

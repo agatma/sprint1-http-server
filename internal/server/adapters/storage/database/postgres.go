@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"metrics/internal/server/core/domain"
 	"metrics/internal/server/logger"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -23,7 +24,7 @@ func NewStorage(cfg *Config) (*MetricStorage, error) {
 		return nil, fmt.Errorf("failed to open database %w", err)
 	}
 	if err = db.Ping(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to ping database %w", err)
 	}
 	return &MetricStorage{db: db}, migrate(db, 1)
 }
@@ -33,7 +34,8 @@ func (s *MetricStorage) GetMetric(mType, mName string) (*domain.Metric, error) {
 		delta sql.NullInt64
 		value sql.NullFloat64
 	)
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
 	row := s.db.QueryRowContext(
 		ctx,
 		`select delta, value from metrics where name=$1 and type=$2 ORDER BY created_at DESC LIMIT 1;`,
@@ -60,7 +62,8 @@ func (s *MetricStorage) GetMetric(mType, mName string) (*domain.Metric, error) {
 }
 
 func (s *MetricStorage) SetMetric(m *domain.Metric) (*domain.Metric, error) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
 	switch m.MType {
 	case domain.Gauge:
 		_, err := s.db.ExecContext(
@@ -94,7 +97,8 @@ func (s *MetricStorage) SetMetric(m *domain.Metric) (*domain.Metric, error) {
 }
 
 func (s *MetricStorage) GetAllMetrics() (domain.MetricsList, error) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
 	metrics := make(domain.MetricsList, 0)
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT t1.name, t1.type, m.delta, m.value 
@@ -140,7 +144,8 @@ func (s *MetricStorage) GetAllMetrics() (domain.MetricsList, error) {
 }
 
 func (s *MetricStorage) Ping() error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
 	if err := s.db.PingContext(ctx); err != nil {
 		return fmt.Errorf("failed to ping database %w", err)
 	}

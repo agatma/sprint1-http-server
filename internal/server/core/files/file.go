@@ -26,6 +26,9 @@ func SaveMetricsToFile(filepath string, metrics domain.MetricValues) error {
 	}(file)
 	metricList := make(domain.MetricsList, 0)
 	for k, v := range metrics {
+		if v.Value == nil || v.Delta == nil {
+			continue
+		}
 		metricList = append(metricList, domain.Metric{
 			ID:    k.ID,
 			MType: k.MType,
@@ -65,9 +68,6 @@ func LoadMetricsFromFile(filepath string) (domain.MetricValues, error) {
 	}
 	metricValues := make(domain.MetricValues)
 	for _, v := range metricList {
-		if v.Value == nil || v.Delta == nil {
-			continue
-		}
 		metricValues[domain.Key{MType: v.MType, ID: v.ID}] = domain.Value{Value: v.Value, Delta: v.Delta}
 	}
 	return metricValues, nil

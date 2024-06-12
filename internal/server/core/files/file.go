@@ -65,6 +65,9 @@ func LoadMetricsFromFile(filepath string) (domain.MetricValues, error) {
 	}
 	metricValues := make(domain.MetricValues)
 	for _, v := range metricList {
+		if v.Value == nil || v.Delta == nil {
+			continue
+		}
 		metricValues[domain.Key{MType: v.MType, ID: v.ID}] = domain.Value{Value: v.Value, Delta: v.Delta}
 	}
 	return metricValues, nil

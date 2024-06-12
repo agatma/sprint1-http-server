@@ -149,6 +149,9 @@ func (ms *MetricService) SaveMetricsToFile() error {
 		return fmt.Errorf("failed to get metrics for saving to file: %w", err)
 	}
 	for _, v := range metrics {
+		if v.Delta == nil || v.Value == nil {
+			continue
+		}
 		metricValues[domain.Key{ID: v.ID, MType: v.MType}] = domain.Value{Value: v.Value, Delta: v.Delta}
 	}
 	err = files.SaveMetricsToFile(ms.filepath, metricValues)

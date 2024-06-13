@@ -147,7 +147,7 @@ func (s *MetricStorage) GetAllMetrics() (domain.MetricsList, error) {
 }
 
 func (s *MetricStorage) Ping() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*ConnTimeout)
 	defer cancel()
 	if err := s.db.PingContext(ctx); err != nil {
 		return fmt.Errorf("failed to ping database %w", err)

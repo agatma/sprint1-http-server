@@ -14,6 +14,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const ConnTimeout = 3
+
 type MetricStorage struct {
 	db *sqlx.DB
 }
@@ -34,7 +36,7 @@ func (s *MetricStorage) GetMetric(mType, mName string) (*domain.Metric, error) {
 		delta sql.NullInt64
 		value sql.NullFloat64
 	)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*ConnTimeout)
 	defer cancel()
 	row := s.db.QueryRowContext(
 		ctx,
@@ -62,7 +64,7 @@ func (s *MetricStorage) GetMetric(mType, mName string) (*domain.Metric, error) {
 }
 
 func (s *MetricStorage) SetMetric(m *domain.Metric) (*domain.Metric, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*ConnTimeout)
 	defer cancel()
 	switch m.MType {
 	case domain.Gauge:
@@ -98,7 +100,7 @@ func (s *MetricStorage) SetMetric(m *domain.Metric) (*domain.Metric, error) {
 }
 
 func (s *MetricStorage) GetAllMetrics() (domain.MetricsList, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*ConnTimeout)
 	defer cancel()
 	metrics := make(domain.MetricsList, 0)
 	rows, err := s.db.QueryContext(ctx,

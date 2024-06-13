@@ -26,9 +26,6 @@ func SaveMetricsToFile(filepath string, metrics domain.MetricValues) error {
 	}(file)
 	metricList := make(domain.MetricsList, 0)
 	for k, v := range metrics {
-		if v.Value == nil || v.Delta == nil {
-			continue
-		}
 		metricList = append(metricList, domain.Metric{
 			ID:    k.ID,
 			MType: k.MType,

@@ -3,7 +3,6 @@ package rest
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -33,6 +32,7 @@ type MetricService interface {
 	SetMetric(m *domain.Metric) (*domain.Metric, error)
 	SetMetricValue(m *domain.SetMetricRequest) (*domain.Metric, error)
 	GetAllMetrics() (domain.MetricsList, error)
+	Ping() error
 }
 
 type handler struct {
@@ -77,6 +77,7 @@ func NewAPI(metricService MetricService, cfg *config.Config) *API {
 		r.Get("/{metricType}/{metricName}", h.GetMetricValue)
 	})
 	r.Get("/", h.GetAllMetrics)
+	r.Get("/ping", h.Ping)
 	return &API{
 		srv: &http.Server{
 			Addr:         cfg.Address,
@@ -84,25 +85,6 @@ func NewAPI(metricService MetricService, cfg *config.Config) *API {
 			ReadTimeout:  time.Second,
 			WriteTimeout: time.Second,
 		},
-	}
-}
-
-func handleSetMetricError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, domain.ErrItemNotFound):
-		http.Error(w, err.Error(), http.StatusNotFound)
-	case errors.Is(err, domain.ErrIncorrectMetricType) || errors.Is(err, domain.ErrIncorrectMetricValue):
-		http.Error(w, err.Error(), http.StatusBadRequest)
-	default:
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
-}
-
-func handleGetMetricError(w http.ResponseWriter, err error) {
-	if errors.Is(err, domain.ErrIncorrectMetricType) || errors.Is(err, domain.ErrItemNotFound) {
-		http.Error(w, domain.ErrItemNotFound.Error(), http.StatusNotFound)
-	} else {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
 
@@ -199,7 +181,7 @@ func (h *handler) GetMetric(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
 	if err := enc.Encode(metric); err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		logger.Log.Error("error encoding response", zap.Error(err))
 		return
 	}
@@ -208,7 +190,7 @@ func (h *handler) GetMetric(w http.ResponseWriter, req *http.Request) {
 func (h *handler) GetAllMetrics(w http.ResponseWriter, req *http.Request) {
 	metrics, err := h.metricService.GetAllMetrics()
 	if err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		logger.Log.Error("failed to get all metrics", zap.Error(err))
 		return
 	}
@@ -229,6 +211,15 @@ func (h *handler) GetAllMetrics(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	if _, err := w.Write([]byte(html)); err != nil {
 		w.WriteHeader(http.StatusOK)
+		return
+	}
+}
+
+func (h *handler) Ping(w http.ResponseWriter, req *http.Request) {
+	err := h.metricService.Ping()
+	if err != nil {
+		logger.Log.Info("failed to ping storage", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 }

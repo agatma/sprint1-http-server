@@ -80,8 +80,9 @@ func (s *MetricStorage) SetMetric(m *domain.Metric) (*domain.Metric, error) {
 			if !errors.Is(err, domain.ErrItemNotFound) {
 				return nil, fmt.Errorf("%w", err)
 			}
+		} else {
+			*m.Delta += *current.Delta
 		}
-		*m.Delta += *current.Delta
 		_, err = s.db.ExecContext(
 			ctx,
 			`INSERT INTO metrics (name, type, delta) VALUES ($1, $2, $3)`,

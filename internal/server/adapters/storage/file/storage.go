@@ -1,6 +1,7 @@
 package file
 
 import (
+	"context"
 	"fmt"
 	"metrics/internal/server/core/files"
 	"sync"
@@ -39,7 +40,7 @@ func NewStorage(cfg *Config) (*MetricStorage, error) {
 	}
 }
 
-func (s *MetricStorage) SetMetric(m *domain.Metric) (*domain.Metric, error) {
+func (s *MetricStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domain.Metric, error) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	var metric domain.Metric
@@ -79,7 +80,7 @@ func (s *MetricStorage) SetMetric(m *domain.Metric) (*domain.Metric, error) {
 	return &metric, nil
 }
 
-func (s *MetricStorage) GetMetric(mType, mName string) (*domain.Metric, error) {
+func (s *MetricStorage) GetMetric(ctx context.Context, mType, mName string) (*domain.Metric, error) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	value, found := s.metrics[domain.Key{MType: mType, ID: mName}]
@@ -94,7 +95,7 @@ func (s *MetricStorage) GetMetric(mType, mName string) (*domain.Metric, error) {
 	}, nil
 }
 
-func (s *MetricStorage) GetAllMetrics() (domain.MetricsList, error) {
+func (s *MetricStorage) GetAllMetrics(ctx context.Context) (domain.MetricsList, error) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	metrics := make(domain.MetricsList, 0)
@@ -109,6 +110,6 @@ func (s *MetricStorage) GetAllMetrics() (domain.MetricsList, error) {
 	return metrics, nil
 }
 
-func (s *MetricStorage) Ping() error {
+func (s *MetricStorage) Ping(ctx context.Context) error {
 	return nil
 }

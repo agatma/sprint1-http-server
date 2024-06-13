@@ -7,14 +7,11 @@ import (
 	"fmt"
 	"metrics/internal/server/core/domain"
 	"metrics/internal/server/logger"
-	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
-
-const ConnTimeout = 3
 
 type MetricStorage struct {
 	db *sqlx.DB
@@ -31,13 +28,11 @@ func NewStorage(cfg *Config) (*MetricStorage, error) {
 	return &MetricStorage{db: db}, migrate(db, 1)
 }
 
-func (s *MetricStorage) GetMetric(mType, mName string) (*domain.Metric, error) {
+func (s *MetricStorage) GetMetric(ctx context.Context, mType, mName string) (*domain.Metric, error) {
 	var (
 		delta sql.NullInt64
 		value sql.NullFloat64
 	)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*ConnTimeout)
-	defer cancel()
 	row := s.db.QueryRowContext(
 		ctx,
 		`select delta, value from metrics where name=$1 and type=$2 ORDER BY created_at DESC LIMIT 1;`,
@@ -63,9 +58,7 @@ func (s *MetricStorage) GetMetric(mType, mName string) (*domain.Metric, error) {
 	}
 }
 
-func (s *MetricStorage) SetMetric(m *domain.Metric) (*domain.Metric, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*ConnTimeout)
-	defer cancel()
+func (s *MetricStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domain.Metric, error) {
 	switch m.MType {
 	case domain.Gauge:
 		_, err := s.db.ExecContext(
@@ -77,7 +70,7 @@ func (s *MetricStorage) SetMetric(m *domain.Metric) (*domain.Metric, error) {
 			return nil, fmt.Errorf("%w", err)
 		}
 	case domain.Counter:
-		current, err := s.GetMetric(m.MType, m.ID)
+		current, err := s.GetMetric(ctx, m.MType, m.ID)
 		if err != nil {
 			if !errors.Is(err, domain.ErrItemNotFound) {
 				return nil, fmt.Errorf("%w", err)
@@ -99,9 +92,7 @@ func (s *MetricStorage) SetMetric(m *domain.Metric) (*domain.Metric, error) {
 	return m, nil
 }
 
-func (s *MetricStorage) GetAllMetrics() (domain.MetricsList, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*ConnTimeout)
-	defer cancel()
+func (s *MetricStorage) GetAllMetrics(ctx context.Context) (domain.MetricsList, error) {
 	metrics := make(domain.MetricsList, 0)
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT t1.name, t1.type, m.delta, m.value 
@@ -146,9 +137,7 @@ func (s *MetricStorage) GetAllMetrics() (domain.MetricsList, error) {
 	return metrics, nil
 }
 
-func (s *MetricStorage) Ping() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*ConnTimeout)
-	defer cancel()
+func (s *MetricStorage) Ping(ctx context.Context) error {
 	if err := s.db.PingContext(ctx); err != nil {
 		return fmt.Errorf("failed to ping database %w", err)
 	}

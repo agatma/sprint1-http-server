@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -14,10 +15,10 @@ import (
 )
 
 type MetricStorage interface {
-	GetMetric(mType, mName string) (*domain.Metric, error)
-	SetMetric(m *domain.Metric) (*domain.Metric, error)
-	GetAllMetrics() (domain.MetricsList, error)
-	Ping() error
+	GetMetric(ctx context.Context, mType, mName string) (*domain.Metric, error)
+	SetMetric(ctx context.Context, m *domain.Metric) (*domain.Metric, error)
+	GetAllMetrics(ctx context.Context) (domain.MetricsList, error)
+	Ping(ctx context.Context) error
 }
 
 type MetricService struct {
@@ -52,18 +53,18 @@ func NewMetricService(cfg *config.Config, storage MetricStorage) (*MetricService
 	return &ms, nil
 }
 
-func (ms *MetricService) GetMetric(mType, mName string) (*domain.Metric, error) {
-	metric, err := ms.storage.GetMetric(mType, mName)
+func (ms *MetricService) GetMetric(ctx context.Context, mType, mName string) (*domain.Metric, error) {
+	metric, err := ms.storage.GetMetric(ctx, mType, mName)
 	if err != nil {
 		return metric, fmt.Errorf("failed to get metric: %w", err)
 	}
 	return metric, nil
 }
 
-func (ms *MetricService) SetMetric(m *domain.Metric) (*domain.Metric, error) {
+func (ms *MetricService) SetMetric(ctx context.Context, m *domain.Metric) (*domain.Metric, error) {
 	switch m.MType {
 	case domain.Gauge, domain.Counter:
-		metric, err := ms.storage.SetMetric(m)
+		metric, err := ms.storage.SetMetric(ctx, m)
 		if err != nil {
 			return metric, fmt.Errorf("%w", err)
 		}
@@ -73,14 +74,14 @@ func (ms *MetricService) SetMetric(m *domain.Metric) (*domain.Metric, error) {
 	}
 }
 
-func (ms *MetricService) SetMetricValue(req *domain.SetMetricRequest) (*domain.Metric, error) {
+func (ms *MetricService) SetMetricValue(ctx context.Context, req *domain.SetMetricRequest) (*domain.Metric, error) {
 	switch req.MType {
 	case domain.Gauge:
 		value, err := strconv.ParseFloat(req.Value, 64)
 		if err != nil {
 			return &domain.Metric{}, domain.ErrIncorrectMetricValue
 		}
-		metric, err := ms.storage.SetMetric(&domain.Metric{
+		metric, err := ms.storage.SetMetric(ctx, &domain.Metric{
 			ID:    req.ID,
 			MType: req.MType,
 			Value: &value,
@@ -95,7 +96,7 @@ func (ms *MetricService) SetMetricValue(req *domain.SetMetricRequest) (*domain.M
 			return &domain.Metric{}, domain.ErrIncorrectMetricValue
 		}
 		valueInt := int64(value)
-		metric, err := ms.storage.SetMetric(&domain.Metric{
+		metric, err := ms.storage.SetMetric(ctx, &domain.Metric{
 			ID:    req.ID,
 			MType: req.MType,
 			Delta: &valueInt,
@@ -109,8 +110,8 @@ func (ms *MetricService) SetMetricValue(req *domain.SetMetricRequest) (*domain.M
 	}
 }
 
-func (ms *MetricService) GetMetricValue(mType, mName string) (string, error) {
-	metric, err := ms.storage.GetMetric(mType, mName)
+func (ms *MetricService) GetMetricValue(ctx context.Context, mType, mName string) (string, error) {
+	metric, err := ms.storage.GetMetric(ctx, mType, mName)
 	if err != nil {
 		return "", fmt.Errorf("%w", err)
 	}
@@ -126,16 +127,16 @@ func (ms *MetricService) GetMetricValue(mType, mName string) (string, error) {
 	}
 }
 
-func (ms *MetricService) GetAllMetrics() (domain.MetricsList, error) {
-	metrics, err := ms.storage.GetAllMetrics()
+func (ms *MetricService) GetAllMetrics(ctx context.Context) (domain.MetricsList, error) {
+	metrics, err := ms.storage.GetAllMetrics(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}
 	return metrics, nil
 }
 
-func (ms *MetricService) Ping() error {
-	err := ms.storage.Ping()
+func (ms *MetricService) Ping(ctx context.Context) error {
+	err := ms.storage.Ping(ctx)
 	if err != nil {
 		return fmt.Errorf("%w", err)
 	}
@@ -144,7 +145,7 @@ func (ms *MetricService) Ping() error {
 
 func (ms *MetricService) SaveMetricsToFile() error {
 	metricValues := make(domain.MetricValues)
-	metrics, err := ms.storage.GetAllMetrics()
+	metrics, err := ms.storage.GetAllMetrics(context.TODO())
 	if err != nil {
 		return fmt.Errorf("failed to get metrics for saving to file: %w", err)
 	}
@@ -164,7 +165,7 @@ func (ms *MetricService) loadMetricsFromFile() error {
 		return fmt.Errorf("failed to load metrics for restore: %w", err)
 	}
 	for k, v := range metrics {
-		_, err := ms.storage.SetMetric(&domain.Metric{
+		_, err := ms.storage.SetMetric(context.TODO(), &domain.Metric{
 			ID:    k.ID,
 			MType: k.MType,
 			Value: v.Value,

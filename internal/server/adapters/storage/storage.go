@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"metrics/internal/server/adapters/storage/database"
@@ -11,10 +12,10 @@ import (
 )
 
 type MetricStorage interface {
-	GetMetric(mType, mName string) (*domain.Metric, error)
-	SetMetric(m *domain.Metric) (*domain.Metric, error)
-	GetAllMetrics() (domain.MetricsList, error)
-	Ping() error
+	GetMetric(ctx context.Context, mType, mName string) (*domain.Metric, error)
+	SetMetric(ctx context.Context, m *domain.Metric) (*domain.Metric, error)
+	GetAllMetrics(ctx context.Context) (domain.MetricsList, error)
+	Ping(ctx context.Context) error
 }
 
 func NewStorage(cfg Config) (MetricStorage, error) {

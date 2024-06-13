@@ -27,12 +27,12 @@ const (
 )
 
 type MetricService interface {
-	GetMetric(mType, mName string) (*domain.Metric, error)
-	GetMetricValue(mType, mName string) (string, error)
-	SetMetric(m *domain.Metric) (*domain.Metric, error)
-	SetMetricValue(m *domain.SetMetricRequest) (*domain.Metric, error)
-	GetAllMetrics() (domain.MetricsList, error)
-	Ping() error
+	GetMetric(ctx context.Context, mType, mName string) (*domain.Metric, error)
+	GetMetricValue(ctx context.Context, mType, mName string) (string, error)
+	SetMetric(ctx context.Context, m *domain.Metric) (*domain.Metric, error)
+	SetMetricValue(ctx context.Context, m *domain.SetMetricRequest) (*domain.Metric, error)
+	GetAllMetrics(ctx context.Context) (domain.MetricsList, error)
+	Ping(ctx context.Context) error
 }
 
 type handler struct {
@@ -92,7 +92,7 @@ func (h *handler) SetMetricValue(w http.ResponseWriter, req *http.Request) {
 	mType := chi.URLParam(req, metricType)
 	mName := chi.URLParam(req, metricName)
 	mValue := chi.URLParam(req, metricValue)
-	_, err := h.metricService.SetMetricValue(&domain.SetMetricRequest{
+	_, err := h.metricService.SetMetricValue(req.Context(), &domain.SetMetricRequest{
 		ID:    mName,
 		MType: mType,
 		Value: mValue,
@@ -130,7 +130,7 @@ func (h *handler) SetMetric(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	metric, err := h.metricService.SetMetric(&m)
+	metric, err := h.metricService.SetMetric(req.Context(), &m)
 
 	if err != nil {
 		logger.Log.Error("failed to set metric", zap.Error(err))
@@ -148,7 +148,7 @@ func (h *handler) SetMetric(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) GetMetricValue(w http.ResponseWriter, req *http.Request) {
 	mType, mName := chi.URLParam(req, metricType), chi.URLParam(req, metricName)
-	metricValue, err := h.metricService.GetMetricValue(mType, mName)
+	metricValue, err := h.metricService.GetMetricValue(req.Context(), mType, mName)
 	if err != nil {
 		logger.Log.Error("failed to get metric",
 			zap.String(metricType, mType),
@@ -170,7 +170,7 @@ func (h *handler) GetMetric(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	metric, err := h.metricService.GetMetric(m.MType, m.ID)
+	metric, err := h.metricService.GetMetric(req.Context(), m.MType, m.ID)
 
 	if err != nil {
 		logger.Log.Error("failed to get metric", zap.Error(err))
@@ -188,7 +188,7 @@ func (h *handler) GetMetric(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) GetAllMetrics(w http.ResponseWriter, req *http.Request) {
-	metrics, err := h.metricService.GetAllMetrics()
+	metrics, err := h.metricService.GetAllMetrics(req.Context())
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		logger.Log.Error("failed to get all metrics", zap.Error(err))
@@ -216,7 +216,7 @@ func (h *handler) GetAllMetrics(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) Ping(w http.ResponseWriter, req *http.Request) {
-	err := h.metricService.Ping()
+	err := h.metricService.Ping(req.Context())
 	if err != nil {
 		logger.Log.Info("failed to ping storage", zap.Error(err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

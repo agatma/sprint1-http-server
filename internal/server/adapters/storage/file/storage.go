@@ -108,3 +108,7 @@ func (s *MetricStorage) GetAllMetrics() (domain.MetricsList, error) {
 	}
 	return metrics, nil
 }
+
+func (s *MetricStorage) Ping() error {
+	return nil
+}

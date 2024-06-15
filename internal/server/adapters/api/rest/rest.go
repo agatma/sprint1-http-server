@@ -24,6 +24,7 @@ const (
 	metricType  = "metricType"
 	metricValue = "metricValue"
 	metricName  = "metricName"
+	contentType = "Content-Type"
 )
 
 type MetricService interface {
@@ -139,7 +140,7 @@ func (h *handler) SetMetric(w http.ResponseWriter, req *http.Request) {
 		handleSetMetricError(w, err)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(contentType, "application/json")
 
 	if err = json.NewEncoder(w).Encode(metric); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -175,7 +176,7 @@ func (h *handler) SetMetrics(w http.ResponseWriter, req *http.Request) {
 		handleSetMetricError(w, err)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(contentType, "application/json")
 
 	if err = json.NewEncoder(w).Encode(metricsOut); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -216,7 +217,7 @@ func (h *handler) GetMetric(w http.ResponseWriter, req *http.Request) {
 
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(contentType, "application/json")
 	enc := json.NewEncoder(w)
 	if err := enc.Encode(metric); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -246,7 +247,7 @@ func (h *handler) GetAllMetrics(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	html += "</ul></body></html>"
-	w.Header().Set("Content-Type", "text/html")
+	w.Header().Set(contentType, "text/html")
 	if _, err := w.Write([]byte(html)); err != nil {
 		w.WriteHeader(http.StatusOK)
 		return

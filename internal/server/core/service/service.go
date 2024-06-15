@@ -64,7 +64,19 @@ func (ms *MetricService) GetMetric(ctx context.Context, mType, mName string) (*d
 
 func (ms *MetricService) SetMetric(ctx context.Context, m *domain.Metric) (*domain.Metric, error) {
 	switch m.MType {
-	case domain.Gauge, domain.Counter:
+	case domain.Gauge:
+		if m.Value == nil {
+			return nil, domain.ErrNilGaugeValue
+		}
+		metric, err := ms.storage.SetMetric(ctx, m)
+		if err != nil {
+			return metric, fmt.Errorf("%w", err)
+		}
+		return metric, nil
+	case domain.Counter:
+		if m.Delta == nil {
+			return nil, domain.ErrNilCounterDelta
+		}
 		metric, err := ms.storage.SetMetric(ctx, m)
 		if err != nil {
 			return metric, fmt.Errorf("%w", err)

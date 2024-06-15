@@ -92,6 +92,58 @@ func (s *MetricStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domai
 	return m, nil
 }
 
+func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsList) (domain.MetricsList, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("%w", err)
+	}
+	for _, m := range metrics {
+		switch m.MType {
+		case domain.Gauge:
+			_, err := s.db.ExecContext(
+				ctx,
+				`INSERT INTO metrics (name, type, value) VALUES ($1, $2, $3)`,
+				m.ID, m.MType, *m.Value,
+			)
+			if err != nil {
+				errTx := tx.Rollback()
+				if errTx != nil {
+					return nil, fmt.Errorf("failed to rollback transaction %w. Error: %s", errTx, err.Error())
+				}
+				return nil, fmt.Errorf("failed to save metrics to db %w", err)
+			}
+		case domain.Counter:
+			current, err := s.GetMetric(ctx, m.MType, m.ID)
+			if err != nil {
+				if !errors.Is(err, domain.ErrItemNotFound) {
+					return nil, fmt.Errorf("%w", err)
+				}
+			} else {
+				*m.Delta += *current.Delta
+			}
+			_, err = s.db.ExecContext(
+				ctx,
+				`INSERT INTO metrics (name, type, delta) VALUES ($1, $2, $3)`,
+				m.ID, m.MType, *m.Delta,
+			)
+			if err != nil {
+				errTx := tx.Rollback()
+				if errTx != nil {
+					return nil, fmt.Errorf("failed to rollback transaction %w. Error: %s", errTx, err.Error())
+				}
+				return nil, fmt.Errorf("failed to save metrics to db %w", err)
+			}
+		default:
+			return nil, domain.ErrIncorrectMetricType
+		}
+	}
+	err = tx.Commit()
+	if err != nil {
+		return nil, fmt.Errorf("failed to commit transaction %w", err)
+	}
+	return metrics, nil
+}
+
 func (s *MetricStorage) GetAllMetrics(ctx context.Context) (domain.MetricsList, error) {
 	metrics := make(domain.MetricsList, 0)
 	rows, err := s.db.QueryContext(ctx,

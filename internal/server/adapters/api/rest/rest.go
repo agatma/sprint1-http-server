@@ -30,6 +30,7 @@ type MetricService interface {
 	GetMetric(ctx context.Context, mType, mName string) (*domain.Metric, error)
 	GetMetricValue(ctx context.Context, mType, mName string) (string, error)
 	SetMetric(ctx context.Context, m *domain.Metric) (*domain.Metric, error)
+	SetMetrics(ctx context.Context, metrics domain.MetricsList) (domain.MetricsList, error)
 	SetMetricValue(ctx context.Context, m *domain.SetMetricRequest) (*domain.Metric, error)
 	GetAllMetrics(ctx context.Context) (domain.MetricsList, error)
 	Ping(ctx context.Context) error
@@ -76,6 +77,7 @@ func NewAPI(metricService MetricService, cfg *config.Config) *API {
 		r.Post("/", h.GetMetric)
 		r.Get("/{metricType}/{metricName}", h.GetMetricValue)
 	})
+	r.Post("/updates/", h.SetMetrics)
 	r.Get("/", h.GetAllMetrics)
 	r.Get("/ping", h.Ping)
 	return &API{
@@ -140,6 +142,42 @@ func (h *handler) SetMetric(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err = json.NewEncoder(w).Encode(metric); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		logger.Log.Error("error encoding response", zap.Error(err))
+		return
+	}
+}
+
+func (h *handler) SetMetrics(w http.ResponseWriter, req *http.Request) {
+	var metricsIn domain.MetricsList
+	if err := json.NewDecoder(req.Body).Decode(&metricsIn); err != nil {
+		logger.Log.Info("cannot decode request JSON body", zap.Error(err))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	_, err := io.Copy(io.Discard, req.Body)
+	if err != nil {
+		logger.Log.Info("cannot read body", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	err = req.Body.Close()
+	if err != nil {
+		logger.Log.Info("cannot close body", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	metricsOut, err := h.metricService.SetMetrics(req.Context(), metricsIn)
+
+	if err != nil {
+		logger.Log.Error("failed to set metric", zap.Error(err))
+		handleSetMetricError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	if err = json.NewEncoder(w).Encode(metricsOut); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		logger.Log.Error("error encoding response", zap.Error(err))
 		return

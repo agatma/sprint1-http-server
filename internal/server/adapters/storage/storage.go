@@ -15,6 +15,7 @@ type MetricStorage interface {
 	GetMetric(ctx context.Context, mType, mName string) (*domain.Metric, error)
 	SetMetric(ctx context.Context, m *domain.Metric) (*domain.Metric, error)
 	GetAllMetrics(ctx context.Context) (domain.MetricsList, error)
+	SetMetrics(ctx context.Context, metrics domain.MetricsList) (domain.MetricsList, error)
 	Ping(ctx context.Context) error
 }
 

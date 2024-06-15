@@ -17,6 +17,7 @@ import (
 type MetricStorage interface {
 	GetMetric(ctx context.Context, mType, mName string) (*domain.Metric, error)
 	SetMetric(ctx context.Context, m *domain.Metric) (*domain.Metric, error)
+	SetMetrics(ctx context.Context, metrics domain.MetricsList) (domain.MetricsList, error)
 	GetAllMetrics(ctx context.Context) (domain.MetricsList, error)
 	Ping(ctx context.Context) error
 }
@@ -72,6 +73,14 @@ func (ms *MetricService) SetMetric(ctx context.Context, m *domain.Metric) (*doma
 	default:
 		return &domain.Metric{}, domain.ErrIncorrectMetricType
 	}
+}
+
+func (ms *MetricService) SetMetrics(ctx context.Context, metrics domain.MetricsList) (domain.MetricsList, error) {
+	metrics, err := ms.storage.SetMetrics(ctx, metrics)
+	if err != nil {
+		return metrics, fmt.Errorf("%w", err)
+	}
+	return metrics, nil
 }
 
 func (ms *MetricService) SetMetricValue(ctx context.Context, req *domain.SetMetricRequest) (*domain.Metric, error) {

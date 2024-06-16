@@ -1,3 +1,7 @@
+/*
+Package database provides functionalities to interact with the database.
+It includes configurations and methods to manage database connections and operations.
+*/
 package database
 
 import (

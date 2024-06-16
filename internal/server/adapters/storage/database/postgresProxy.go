@@ -49,7 +49,10 @@ func (px *ProxyStorage) GetMetric(ctx context.Context, mType, mName string) (*do
 		retry.DelayType(config.DelayType),
 		retry.OnRetry(config.OnRetry),
 	)
-	return metric, fmt.Errorf("%w", err)
+	if err != nil {
+		return metric, fmt.Errorf("%w", err)
+	}
+	return metric, nil
 }
 
 func (px *ProxyStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domain.Metric, error) {
@@ -71,7 +74,10 @@ func (px *ProxyStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domai
 		retry.DelayType(config.DelayType),
 		retry.OnRetry(config.OnRetry),
 	)
-	return metric, fmt.Errorf("%w", err)
+	if err != nil {
+		return metric, fmt.Errorf("%w", err)
+	}
+	return metric, nil
 }
 
 func (px *ProxyStorage) SetMetrics(ctx context.Context, metrics domain.MetricsList) (domain.MetricsList, error) {
@@ -93,7 +99,10 @@ func (px *ProxyStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 		retry.DelayType(config.DelayType),
 		retry.OnRetry(config.OnRetry),
 	)
-	return metricsOut, fmt.Errorf("%w", err)
+	if err != nil {
+		return metricsOut, fmt.Errorf("%w", err)
+	}
+	return metricsOut, nil
 }
 
 func (px *ProxyStorage) GetAllMetrics(ctx context.Context) (domain.MetricsList, error) {
@@ -115,9 +124,32 @@ func (px *ProxyStorage) GetAllMetrics(ctx context.Context) (domain.MetricsList, 
 		retry.DelayType(config.DelayType),
 		retry.OnRetry(config.OnRetry),
 	)
-	return metrics, fmt.Errorf("%w", err)
+	if err != nil {
+		return metrics, fmt.Errorf("%w", err)
+	}
+	return metrics, nil
 }
 
 func (px *ProxyStorage) Ping(ctx context.Context) error {
-	return px.s.Ping(ctx)
+	err := retry.Do(
+		func() error {
+			var err error
+			err = px.s.Ping(ctx)
+			return err
+		},
+		retry.RetryIf(func(err error) bool {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
+				return true
+			}
+			return false
+		}),
+		retry.Attempts(config.Attempts),
+		retry.DelayType(config.DelayType),
+		retry.OnRetry(config.OnRetry),
+	)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	return nil
 }

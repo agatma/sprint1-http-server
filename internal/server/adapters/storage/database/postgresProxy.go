@@ -1,7 +1,3 @@
-/*
-Package database provides functionalities to interact with the database.
-It includes configurations and methods to manage database connections and operations.
-*/
 package database
 
 import (
@@ -10,11 +6,15 @@ import (
 	"fmt"
 	"metrics/internal/server/config"
 	"metrics/internal/server/core/domain"
+	"metrics/internal/server/logger"
 
 	"github.com/avast/retry-go"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
+	"go.uber.org/zap"
 )
+
+const retryError = "retry error"
 
 type ProxyStorage struct {
 	s *MetricStorage
@@ -31,12 +31,14 @@ func NewProxyPostgresStorage(cfg *Config) (*ProxyStorage, error) {
 }
 
 func (px *ProxyStorage) GetMetric(ctx context.Context, mType, mName string) (*domain.Metric, error) {
-	var metric *domain.Metric
+	var (
+		metric      *domain.Metric
+		originalErr error
+	)
 	err := retry.Do(
 		func() error {
-			var err error
-			metric, err = px.s.GetMetric(ctx, mType, mName)
-			return err
+			metric, originalErr = px.s.GetMetric(ctx, mType, mName)
+			return originalErr
 		},
 		retry.RetryIf(func(err error) bool {
 			var pgErr *pgconn.PgError
@@ -50,18 +52,21 @@ func (px *ProxyStorage) GetMetric(ctx context.Context, mType, mName string) (*do
 		retry.OnRetry(config.OnRetry),
 	)
 	if err != nil {
-		return metric, fmt.Errorf("%w", err)
+		logger.Log.Error(retryError, zap.Error(err), zap.Error(originalErr))
+		return metric, originalErr
 	}
 	return metric, nil
 }
 
 func (px *ProxyStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domain.Metric, error) {
-	var metric *domain.Metric
+	var (
+		metric      *domain.Metric
+		originalErr error
+	)
 	err := retry.Do(
 		func() error {
-			var err error
-			metric, err = px.s.SetMetric(ctx, m)
-			return err
+			metric, originalErr = px.s.SetMetric(ctx, m)
+			return originalErr
 		},
 		retry.RetryIf(func(err error) bool {
 			var pgErr *pgconn.PgError
@@ -75,18 +80,21 @@ func (px *ProxyStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domai
 		retry.OnRetry(config.OnRetry),
 	)
 	if err != nil {
-		return metric, fmt.Errorf("%w", err)
+		logger.Log.Error(retryError, zap.Error(err), zap.Error(originalErr))
+		return metric, originalErr
 	}
 	return metric, nil
 }
 
 func (px *ProxyStorage) SetMetrics(ctx context.Context, metrics domain.MetricsList) (domain.MetricsList, error) {
-	var metricsOut domain.MetricsList
+	var (
+		metricsOut  domain.MetricsList
+		originalErr error
+	)
 	err := retry.Do(
 		func() error {
-			var err error
-			metricsOut, err = px.s.SetMetrics(ctx, metrics)
-			return err
+			metricsOut, originalErr = px.s.SetMetrics(ctx, metrics)
+			return originalErr
 		},
 		retry.RetryIf(func(err error) bool {
 			var pgErr *pgconn.PgError
@@ -100,18 +108,21 @@ func (px *ProxyStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 		retry.OnRetry(config.OnRetry),
 	)
 	if err != nil {
-		return metricsOut, fmt.Errorf("%w", err)
+		logger.Log.Error(retryError, zap.Error(err), zap.Error(originalErr))
+		return metricsOut, originalErr
 	}
 	return metricsOut, nil
 }
 
 func (px *ProxyStorage) GetAllMetrics(ctx context.Context) (domain.MetricsList, error) {
-	var metrics domain.MetricsList
+	var (
+		metrics     domain.MetricsList
+		originalErr error
+	)
 	err := retry.Do(
 		func() error {
-			var err error
-			metrics, err = px.s.GetAllMetrics(ctx)
-			return err
+			metrics, originalErr = px.s.GetAllMetrics(ctx)
+			return originalErr
 		},
 		retry.RetryIf(func(err error) bool {
 			var pgErr *pgconn.PgError
@@ -125,16 +136,17 @@ func (px *ProxyStorage) GetAllMetrics(ctx context.Context) (domain.MetricsList, 
 		retry.OnRetry(config.OnRetry),
 	)
 	if err != nil {
-		return metrics, fmt.Errorf("%w", err)
+		logger.Log.Error(retryError, zap.Error(err), zap.Error(originalErr))
+		return metrics, originalErr
 	}
 	return metrics, nil
 }
 
 func (px *ProxyStorage) Ping(ctx context.Context) error {
+	var originalErr error
 	err := retry.Do(
 		func() error {
-			var err error
-			err = px.s.Ping(ctx)
+			err := px.s.Ping(ctx)
 			return err
 		},
 		retry.RetryIf(func(err error) bool {
@@ -149,7 +161,8 @@ func (px *ProxyStorage) Ping(ctx context.Context) error {
 		retry.OnRetry(config.OnRetry),
 	)
 	if err != nil {
-		return fmt.Errorf("%w", err)
+		logger.Log.Error(retryError, zap.Error(err), zap.Error(originalErr))
+		return originalErr
 	}
 	return nil
 }

@@ -21,7 +21,7 @@ type MetricStorage interface {
 
 func NewStorage(cfg Config) (MetricStorage, error) {
 	if cfg.Database != nil {
-		storage, err := database.NewStorage(cfg.Database)
+		storage, err := database.NewProxyPostgresStorage(cfg.Database)
 		if err != nil {
 			return nil, fmt.Errorf("%w", err)
 		}

@@ -17,7 +17,7 @@ type MetricStorage struct {
 	db *sqlx.DB
 }
 
-func NewStorage(cfg *Config) (*MetricStorage, error) {
+func NewPostgresStorage(cfg *Config) (*MetricStorage, error) {
 	db, err := sqlx.Open("pgx", cfg.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database %w", err)

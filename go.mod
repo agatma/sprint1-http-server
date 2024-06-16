@@ -3,9 +3,11 @@ module metrics
 go 1.22.2
 
 require (
+	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/caarlos0/env/v11 v11.0.0
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/go-resty/resty/v2 v2.12.0
+	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/pressly/goose/v3 v3.20.0

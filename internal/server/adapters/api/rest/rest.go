@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	middle "github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
 
 	"metrics/internal/server/adapters/api/middleware"
@@ -24,7 +25,9 @@ const (
 	metricType  = "metricType"
 	metricValue = "metricValue"
 	metricName  = "metricName"
-	contentType = "Content-Type"
+
+	contentType   = "Content-Type"
+	serverTimeout = 3
 )
 
 type MetricService interface {
@@ -70,6 +73,7 @@ func NewAPI(metricService MetricService, cfg *config.Config) *API {
 	r.Use(middleware.LoggingRequestMiddleware)
 	r.Use(middleware.CompressRequestMiddleware)
 	r.Use(middleware.CompressResponseMiddleware)
+	r.Use(middle.Timeout(serverTimeout * time.Second))
 	r.Route("/update", func(r chi.Router) {
 		r.Post("/", h.SetMetric)
 		r.Post("/{metricType}/{metricName}/{metricValue}", h.SetMetricValue)
@@ -83,10 +87,8 @@ func NewAPI(metricService MetricService, cfg *config.Config) *API {
 	r.Get("/ping", h.Ping)
 	return &API{
 		srv: &http.Server{
-			Addr:         cfg.Address,
-			Handler:      r,
-			ReadTimeout:  time.Second,
-			WriteTimeout: time.Second,
+			Addr:    cfg.Address,
+			Handler: r,
 		},
 	}
 }

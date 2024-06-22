@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"metrics/internal/server/core/domain"
 	"metrics/internal/server/logger"
-	"metrics/internal/shared-kernel/retry"
+	"metrics/internal/shared-kernel/retrying"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -62,9 +62,9 @@ func (s *MetricStorage) GetMetric(ctx context.Context, mType, mName string) (*do
 func (s *MetricStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domain.Metric, error) {
 	switch m.MType {
 	case domain.Gauge:
-		err := retry.ExecContext(
-			s.db,
+		err := retrying.ExecContext(
 			ctx,
+			s.db,
 			`INSERT INTO metrics (name, type, value) VALUES ($1, $2, $3)`,
 			m.ID, m.MType, *m.Value,
 		)
@@ -80,9 +80,9 @@ func (s *MetricStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domai
 		} else {
 			*m.Delta += *current.Delta
 		}
-		err = retry.ExecContext(
-			s.db,
+		err = retrying.ExecContext(
 			ctx,
+			s.db,
 			`INSERT INTO metrics (name, type, delta) VALUES ($1, $2, $3)`,
 			m.ID, m.MType, *m.Delta,
 		)
@@ -103,9 +103,9 @@ func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 	for _, m := range metrics {
 		switch m.MType {
 		case domain.Gauge:
-			err := retry.ExecContext(
-				s.db,
+			err := retrying.ExecContext(
 				ctx,
+				s.db,
 				`INSERT INTO metrics (name, type, value) VALUES ($1, $2, $3)`,
 				m.ID, m.MType, *m.Value,
 			)
@@ -125,9 +125,9 @@ func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 			} else {
 				*m.Delta += *current.Delta
 			}
-			err = retry.ExecContext(
-				s.db,
+			err = retrying.ExecContext(
 				ctx,
+				s.db,
 				`INSERT INTO metrics (name, type, delta) VALUES ($1, $2, $3)`,
 				m.ID, m.MType, *m.Delta,
 			)

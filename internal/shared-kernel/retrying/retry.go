@@ -1,4 +1,4 @@
-package retry
+package retrying
 
 import (
 	"context"
@@ -33,7 +33,7 @@ func OnRetry(n uint, err error) {
 	logger.Log.Error(fmt.Sprintf(`%d %s`, n, err.Error()))
 }
 
-func ExecContext(db *sqlx.DB, ctx context.Context, query string, args ...any) error {
+func ExecContext(ctx context.Context, db *sqlx.DB, query string, args ...any) error {
 	var originalErr error
 	err := retry.Do(
 		func() error {

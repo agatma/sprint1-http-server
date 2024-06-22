@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"metrics/internal/server/adapters/api"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,10 +13,9 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	middle "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
 
-	"metrics/internal/server/adapters/api/middleware"
 	"metrics/internal/server/config"
 	"metrics/internal/server/core/domain"
 	"metrics/internal/server/logger"
@@ -70,10 +70,10 @@ func NewAPI(metricService MetricService, cfg *config.Config) *API {
 		metricService: metricService,
 	}
 	r := chi.NewRouter()
-	r.Use(middleware.LoggingRequestMiddleware)
-	r.Use(middleware.CompressRequestMiddleware)
-	r.Use(middleware.CompressResponseMiddleware)
-	r.Use(middle.Timeout(serverTimeout * time.Second))
+	r.Use(api.LoggingRequestMiddleware)
+	r.Use(api.CompressRequestMiddleware)
+	r.Use(api.CompressResponseMiddleware)
+	r.Use(middleware.Timeout(serverTimeout * time.Second))
 	r.Route("/update", func(r chi.Router) {
 		r.Post("/", h.SetMetric)
 		r.Post("/{metricType}/{metricName}/{metricValue}", h.SetMetricValue)

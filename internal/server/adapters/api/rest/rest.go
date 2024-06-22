@@ -154,7 +154,6 @@ func (h *handler) SetMetric(w http.ResponseWriter, req *http.Request) {
 func (h *handler) SetMetrics(w http.ResponseWriter, req *http.Request) {
 	var metricsIn domain.MetricsList
 	if err := json.NewDecoder(req.Body).Decode(&metricsIn); err != nil {
-		logger.Log.Info("cannot decode request JSON body", zap.Error(err))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

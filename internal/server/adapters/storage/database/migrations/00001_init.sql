@@ -1,7 +1,7 @@
 -- +goose Up
 CREATE TABLE IF NOT EXISTS metrics
 (
-    id            serial       not null unique,
+    id            INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name          varchar(255) not null,
     type          varchar(255) not null,
     delta         bigint,

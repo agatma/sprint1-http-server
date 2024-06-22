@@ -17,7 +17,7 @@ type MetricStorage struct {
 	db *sqlx.DB
 }
 
-func NewPostgresStorage(cfg *Config) (*MetricStorage, error) {
+func NewStorage(cfg *Config) (*MetricStorage, error) {
 	db, err := sqlx.Open("pgx", cfg.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database %w", err)
@@ -25,7 +25,7 @@ func NewPostgresStorage(cfg *Config) (*MetricStorage, error) {
 	if err = db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database %w", err)
 	}
-	return &MetricStorage{db: db}, migrate(db, 1)
+	return &MetricStorage{db: db}, migrate(db)
 }
 
 func (s *MetricStorage) GetMetric(ctx context.Context, mType, mName string) (*domain.Metric, error) {
@@ -61,7 +61,7 @@ func (s *MetricStorage) GetMetric(ctx context.Context, mType, mName string) (*do
 func (s *MetricStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domain.Metric, error) {
 	switch m.MType {
 	case domain.Gauge:
-		_, err := s.db.ExecContext(
+		err := s.retryExecRequest(
 			ctx,
 			`INSERT INTO metrics (name, type, value) VALUES ($1, $2, $3)`,
 			m.ID, m.MType, *m.Value,
@@ -78,7 +78,7 @@ func (s *MetricStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domai
 		} else {
 			*m.Delta += *current.Delta
 		}
-		_, err = s.db.ExecContext(
+		err = s.retryExecRequest(
 			ctx,
 			`INSERT INTO metrics (name, type, delta) VALUES ($1, $2, $3)`,
 			m.ID, m.MType, *m.Delta,
@@ -100,7 +100,7 @@ func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 	for _, m := range metrics {
 		switch m.MType {
 		case domain.Gauge:
-			_, err := s.db.ExecContext(
+			err := s.retryExecRequest(
 				ctx,
 				`INSERT INTO metrics (name, type, value) VALUES ($1, $2, $3)`,
 				m.ID, m.MType, *m.Value,
@@ -121,7 +121,7 @@ func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 			} else {
 				*m.Delta += *current.Delta
 			}
-			_, err = s.db.ExecContext(
+			err = s.retryExecRequest(
 				ctx,
 				`INSERT INTO metrics (name, type, delta) VALUES ($1, $2, $3)`,
 				m.ID, m.MType, *m.Delta,

@@ -5,13 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"metrics/internal/server/config"
 	"metrics/internal/server/core/domain"
 	"metrics/internal/server/logger"
+	"metrics/internal/shared-kernel/retry"
 
-	"github.com/avast/retry-go"
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
@@ -65,7 +62,8 @@ func (s *MetricStorage) GetMetric(ctx context.Context, mType, mName string) (*do
 func (s *MetricStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domain.Metric, error) {
 	switch m.MType {
 	case domain.Gauge:
-		err := s.retryExecRequest(
+		err := retry.ExecContext(
+			s.db,
 			ctx,
 			`INSERT INTO metrics (name, type, value) VALUES ($1, $2, $3)`,
 			m.ID, m.MType, *m.Value,
@@ -82,7 +80,8 @@ func (s *MetricStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domai
 		} else {
 			*m.Delta += *current.Delta
 		}
-		err = s.retryExecRequest(
+		err = retry.ExecContext(
+			s.db,
 			ctx,
 			`INSERT INTO metrics (name, type, delta) VALUES ($1, $2, $3)`,
 			m.ID, m.MType, *m.Delta,
@@ -104,7 +103,8 @@ func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 	for _, m := range metrics {
 		switch m.MType {
 		case domain.Gauge:
-			err := s.retryExecRequest(
+			err := retry.ExecContext(
+				s.db,
 				ctx,
 				`INSERT INTO metrics (name, type, value) VALUES ($1, $2, $3)`,
 				m.ID, m.MType, *m.Value,
@@ -125,7 +125,8 @@ func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 			} else {
 				*m.Delta += *current.Delta
 			}
-			err = s.retryExecRequest(
+			err = retry.ExecContext(
+				s.db,
 				ctx,
 				`INSERT INTO metrics (name, type, delta) VALUES ($1, $2, $3)`,
 				m.ID, m.MType, *m.Delta,
@@ -198,36 +199,4 @@ func (s *MetricStorage) Ping(ctx context.Context) error {
 		return fmt.Errorf("failed to ping database %w", err)
 	}
 	return nil
-}
-
-func (s *MetricStorage) retryExecRequest(ctx context.Context, query string, args ...any) error {
-	var originalErr error
-	err := retry.Do(
-		func() error {
-			_, originalErr := s.db.ExecContext(
-				ctx,
-				query,
-				args...,
-			)
-			if originalErr != nil {
-				return fmt.Errorf("%w", originalErr)
-			}
-			return nil
-		},
-		retry.RetryIf(func(err error) bool {
-			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
-				return true
-			}
-			return false
-		}),
-		retry.Attempts(config.Attempts),
-		retry.DelayType(config.DelayType),
-		retry.OnRetry(config.OnRetry),
-	)
-	if err != nil {
-		logger.Log.Error("retryError", zap.Error(err), zap.Error(originalErr))
-		return fmt.Errorf("%w", originalErr)
-	}
-	return originalErr
 }

@@ -7,7 +7,9 @@ CREATE TABLE IF NOT EXISTS metrics
     delta         bigint,
     value         double precision,
     created_at    timestamp without time zone NOT NULL DEFAULT (current_timestamp AT TIME ZONE 'UTC')
-);
+    CHECK (delta IS NOT NULL OR value IS NOT NULL)
+    );
+
 CREATE INDEX IF NOT EXISTS name_idx ON metrics (name);
 CREATE INDEX IF NOT EXISTS type_idx ON metrics (type);
 

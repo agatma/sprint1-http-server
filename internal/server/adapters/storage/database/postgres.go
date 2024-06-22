@@ -209,7 +209,10 @@ func (s *MetricStorage) retryExecRequest(ctx context.Context, query string, args
 				query,
 				args...,
 			)
-			return originalErr
+			if originalErr != nil {
+				return fmt.Errorf("%w", originalErr)
+			}
+			return nil
 		},
 		retry.RetryIf(func(err error) bool {
 			var pgErr *pgconn.PgError

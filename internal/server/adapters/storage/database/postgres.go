@@ -110,10 +110,9 @@ func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 				m.ID, m.MType, *m.Value,
 			)
 			if err != nil {
-				if txErr := tx.Rollback(); err != nil {
+				if txErr := tx.Rollback(); txErr != nil {
 					if !errors.Is(txErr, sql.ErrTxDone) {
-						logger.Log.Error("failed to rollback the transaction", zap.Error(err))
-						return nil, fmt.Errorf("failed to rollback the transaction: %w", txErr)
+						logger.Log.Error("failed to rollback the transaction", zap.Error(txErr))
 					}
 				}
 				return nil, fmt.Errorf("%w", err)
@@ -135,10 +134,9 @@ func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 				m.ID, m.MType, *m.Delta,
 			)
 			if err != nil {
-				if txErr := tx.Rollback(); err != nil {
+				if txErr := tx.Rollback(); txErr != nil {
 					if !errors.Is(txErr, sql.ErrTxDone) {
-						logger.Log.Error("failed to rollback the transaction", zap.Error(err))
-						return nil, fmt.Errorf("failed to rollback the transaction: %w", txErr)
+						logger.Log.Error("failed to rollback the transaction", zap.Error(txErr))
 					}
 				}
 				return nil, fmt.Errorf("%w", err)

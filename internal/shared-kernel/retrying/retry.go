@@ -11,7 +11,6 @@ import (
 	"github.com/avast/retry-go"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
 
@@ -34,39 +33,11 @@ func OnRetry(n uint, err error) {
 	logger.Log.Error(fmt.Sprintf(`%d %s`, n, err.Error()))
 }
 
-func TxExecContext(ctx context.Context, tx *sql.Tx, query string, args ...any) error {
-	var originalErr error
-	err := retry.Do(
-		func() error {
-			_, originalErr := tx.ExecContext(
-				ctx,
-				query,
-				args...,
-			)
-			if originalErr != nil {
-				return fmt.Errorf("%w", originalErr)
-			}
-			return nil
-		},
-		retry.RetryIf(func(err error) bool {
-			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
-				return true
-			}
-			return false
-		}),
-		retry.Attempts(Attempts),
-		retry.DelayType(DelayType),
-		retry.OnRetry(OnRetry),
-	)
-	if err != nil {
-		logger.Log.Error("retryError", zap.Error(err), zap.Error(originalErr))
-		return fmt.Errorf("%w", originalErr)
-	}
-	return originalErr
+type Transaction interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
 
-func ExecContext(ctx context.Context, tx *sqlx.DB, query string, args ...any) error {
+func ExecContext(ctx context.Context, tx Transaction, query string, args ...any) error {
 	var originalErr error
 	err := retry.Do(
 		func() error {

@@ -69,7 +69,7 @@ func (s *MetricStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domai
 			m.ID, m.MType, *m.Value,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("%w", err)
+			return nil, err
 		}
 	case domain.Counter:
 		current, err := s.GetMetric(ctx, m.MType, m.ID)
@@ -87,7 +87,7 @@ func (s *MetricStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domai
 			m.ID, m.MType, *m.Delta,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("%w", err)
+			return nil, err
 		}
 	default:
 		return nil, domain.ErrIncorrectMetricType
@@ -110,12 +110,15 @@ func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 	for _, m := range metrics {
 		switch m.MType {
 		case domain.Gauge:
-			err = retrying.TxExecContext(
+			err = retrying.ExecContext(
 				ctx,
 				tx,
 				`INSERT INTO metrics (name, type, value) VALUES ($1, $2, $3)`,
 				m.ID, m.MType, *m.Value,
 			)
+			if err != nil {
+				return nil, fmt.Errorf("%w", err)
+			}
 
 		case domain.Counter:
 			current, err := s.GetMetric(ctx, m.MType, m.ID)
@@ -126,12 +129,15 @@ func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 			} else {
 				*m.Delta += *current.Delta
 			}
-			err = retrying.TxExecContext(
+			err = retrying.ExecContext(
 				ctx,
 				tx,
 				`INSERT INTO metrics (name, type, delta) VALUES ($1, $2, $3)`,
 				m.ID, m.MType, *m.Delta,
 			)
+			if err != nil {
+				return nil, fmt.Errorf("%w", err)
+			}
 		default:
 			return nil, domain.ErrIncorrectMetricType
 		}

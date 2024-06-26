@@ -69,7 +69,7 @@ func (s *MetricStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domai
 			m.ID, m.MType, *m.Value,
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w", err)
 		}
 	case domain.Counter:
 		current, err := s.GetMetric(ctx, m.MType, m.ID)
@@ -87,7 +87,7 @@ func (s *MetricStorage) SetMetric(ctx context.Context, m *domain.Metric) (*domai
 			m.ID, m.MType, *m.Delta,
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w", err)
 		}
 	default:
 		return nil, domain.ErrIncorrectMetricType
@@ -100,13 +100,6 @@ func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}
-	defer func() {
-		if err := tx.Rollback(); err != nil {
-			if !errors.Is(err, sql.ErrTxDone) {
-				logger.Log.Error("failed to rollback the transaction", zap.Error(err))
-			}
-		}
-	}()
 	for _, m := range metrics {
 		switch m.MType {
 		case domain.Gauge:
@@ -117,6 +110,12 @@ func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 				m.ID, m.MType, *m.Value,
 			)
 			if err != nil {
+				if txErr := tx.Rollback(); err != nil {
+					if !errors.Is(txErr, sql.ErrTxDone) {
+						logger.Log.Error("failed to rollback the transaction", zap.Error(err))
+						return nil, fmt.Errorf("failed to rollback the transaction: %w", txErr)
+					}
+				}
 				return nil, fmt.Errorf("%w", err)
 			}
 
@@ -136,6 +135,12 @@ func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 				m.ID, m.MType, *m.Delta,
 			)
 			if err != nil {
+				if txErr := tx.Rollback(); err != nil {
+					if !errors.Is(txErr, sql.ErrTxDone) {
+						logger.Log.Error("failed to rollback the transaction", zap.Error(err))
+						return nil, fmt.Errorf("failed to rollback the transaction: %w", txErr)
+					}
+				}
 				return nil, fmt.Errorf("%w", err)
 			}
 		default:
@@ -143,8 +148,7 @@ func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 		}
 	}
 
-	err = tx.Commit()
-	if err != nil {
+	if err = tx.Commit(); err != nil {
 		return nil, fmt.Errorf("failed to commit transaction %w", err)
 	}
 	return metrics, nil

@@ -105,7 +105,7 @@ func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 		case domain.Gauge:
 			err = retrying.ExecContext(
 				ctx,
-				tx,
+				s.db,
 				`INSERT INTO metrics (name, type, value) VALUES ($1, $2, $3)`,
 				m.ID, m.MType, *m.Value,
 			)
@@ -129,7 +129,7 @@ func (s *MetricStorage) SetMetrics(ctx context.Context, metrics domain.MetricsLi
 			}
 			err = retrying.ExecContext(
 				ctx,
-				tx,
+				s.db,
 				`INSERT INTO metrics (name, type, delta) VALUES ($1, $2, $3)`,
 				m.ID, m.MType, *m.Delta,
 			)

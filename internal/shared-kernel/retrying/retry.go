@@ -2,6 +2,7 @@ package retrying
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"metrics/internal/server/logger"
@@ -33,11 +34,43 @@ func OnRetry(n uint, err error) {
 	logger.Log.Error(fmt.Sprintf(`%d %s`, n, err.Error()))
 }
 
-func ExecContext(ctx context.Context, db *sqlx.DB, query string, args ...any) error {
+func TxExecContext(ctx context.Context, tx *sql.Tx, query string, args ...any) error {
 	var originalErr error
 	err := retry.Do(
 		func() error {
-			_, originalErr := db.ExecContext(
+			_, originalErr := tx.ExecContext(
+				ctx,
+				query,
+				args...,
+			)
+			if originalErr != nil {
+				return fmt.Errorf("%w", originalErr)
+			}
+			return nil
+		},
+		retry.RetryIf(func(err error) bool {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
+				return true
+			}
+			return false
+		}),
+		retry.Attempts(Attempts),
+		retry.DelayType(DelayType),
+		retry.OnRetry(OnRetry),
+	)
+	if err != nil {
+		logger.Log.Error("retryError", zap.Error(err), zap.Error(originalErr))
+		return fmt.Errorf("%w", originalErr)
+	}
+	return originalErr
+}
+
+func ExecContext(ctx context.Context, tx *sqlx.DB, query string, args ...any) error {
+	var originalErr error
+	err := retry.Do(
+		func() error {
+			_, originalErr := tx.ExecContext(
 				ctx,
 				query,
 				args...,

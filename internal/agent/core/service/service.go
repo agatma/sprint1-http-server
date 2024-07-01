@@ -134,7 +134,7 @@ func (a *AgentMetricService) SendMetrics(host string) error {
 			func() error {
 				err = handlers.SendMetrics(host, &request)
 				if err != nil {
-					return fmt.Errorf("%w", err)
+					return fmt.Errorf("failed to send metrics: %w", err)
 				}
 				return nil
 			},
